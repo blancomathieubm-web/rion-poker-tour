@@ -1,0 +1,2798 @@
+<!doctype html>
+<html lang="fr">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Rion Poker Tour + PDF (tous tournois)</title>
+
+  <!-- PWA : installation sur écran d'accueil -->
+  <link rel="manifest" href="manifest.json" />
+  <meta name="theme-color" content="#0b1020" />
+  <link rel="icon" href="icon-192-v2.png" />
+  <link rel="apple-touch-icon" href="apple-touch-icon-v2.png" />
+  <meta name="mobile-web-app-capable" content="yes" />
+  <meta name="apple-mobile-web-app-capable" content="yes" />
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+  <meta name="apple-mobile-web-app-title" content="Rion Poker Tour" />
+
+  <!-- jsPDF + AutoTable (tables PDF) -->
+  <script src="https://cdn.jsdelivr.net/npm/jspdf@2.5.1/dist/jspdf.umd.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/jspdf-autotable@3.8.2/dist/jspdf.plugin.autotable.min.js"></script>
+  <!-- pdf.js (lecture de PDF pour import) -->
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
+  <script>
+    pdfjsLib.GlobalWorkerOptions.workerSrc = "https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js";
+  </script>
+
+  <style>
+    :root {
+      --bg:#0b1020; --card:#111a33; --muted:#95a3c6; --text:#e8ecff; --acc:#5eead4; --bad:#fb7185;
+      --sidebar-w:230px; --bottomnav-h:62px; --topbar-h:0px;
+    }
+    *{box-sizing:border-box}
+    html,body{height:auto; min-height:100%}
+    body{
+      margin:0;
+      font-family:system-ui,-apple-system,Segoe UI,Roboto,Arial;
+      background:linear-gradient(180deg,#070a14,#0b1020);
+      color:var(--text);
+    }
+
+    button, input, select{
+      border-radius:10px;
+      border:1px solid rgba(255,255,255,.14);
+      background:rgba(0,0,0,.25);
+      color:var(--text);
+      padding:10px 10px;
+      outline:none;
+      font-family:inherit;
+    }
+    input::placeholder{color:rgba(232,236,255,.45)}
+    button{cursor:pointer}
+    button.primary{background:rgba(94,234,212,.18);border-color:rgba(94,234,212,.4)}
+    button.danger{background:rgba(251,113,133,.14);border-color:rgba(251,113,133,.35)}
+    button.ghost{background:rgba(0,0,0,.12)}
+    button:disabled{opacity:.55;cursor:not-allowed}
+    .status{color:var(--muted);font-size:12px}
+
+    /* ── App shell ───────────────────────────────────────────── */
+    .appShell{
+      display:flex;
+      min-height:100vh;
+      align-items:stretch;
+    }
+
+    .sidebar{
+      width:var(--sidebar-w);
+      flex-shrink:0;
+      background:rgba(9,13,26,.9);
+      border-right:1px solid rgba(255,255,255,.08);
+      display:flex;
+      flex-direction:column;
+      gap:4px;
+      padding:16px 12px;
+      position:sticky;
+      top:0;
+      height:100vh;
+      overflow-y:auto;
+      z-index:40;
+    }
+    .sidebarBrand{
+      display:flex; align-items:center; gap:10px;
+      padding:6px 8px 16px 8px;
+      font-weight:800; font-size:16px;
+    }
+    .sidebarBrand .icon{font-size:22px}
+
+    .navGroup{display:flex; flex-direction:column; gap:4px}
+    .navGroup.secondary{margin-top:4px}
+    .navDivider{height:1px; background:rgba(255,255,255,.08); margin:14px 4px}
+
+    .navItem{
+      display:flex; align-items:center; gap:10px;
+      width:100%;
+      text-align:left;
+      padding:10px 12px;
+      font-size:13.5px;
+      border-radius:10px;
+      justify-content:flex-start;
+    }
+    .navItem.small{font-size:12.5px; padding:9px 12px; opacity:.9}
+
+    .sidebarFooter{
+      margin-top:auto;
+      padding:10px 8px 4px 8px;
+    }
+
+    /* Mobile close button + backdrop (hidden on desktop) */
+    .sidebarClose{display:none}
+    .backdrop{display:none}
+
+    /* ── Main content ─────────────────────────────────────────── */
+    .mainArea{
+      flex:1;
+      min-width:0;
+      display:flex;
+      flex-direction:column;
+    }
+
+    .topBar{
+      display:flex;
+      justify-content:space-between;
+      align-items:flex-end;
+      gap:10px;
+      flex-wrap:wrap;
+      padding:18px 22px 8px 22px;
+    }
+    .topBar .statusGroup{display:flex; flex-direction:column; align-items:flex-end; gap:2px}
+    h1{margin:0;font-size:19px}
+    .sub{margin:0;color:var(--muted);font-size:12px}
+
+    .hamburgerBtn{display:none}
+
+    .pageWrap{
+      padding:8px 22px 40px 22px;
+      flex:1;
+    }
+
+    .view{display:none}
+    .view.active{display:block}
+
+    .grid{
+      display:grid;
+      grid-template-columns: 1.05fr 0.95fr;
+      gap:16px;
+      align-items:start;
+    }
+    @media (max-width: 980px){
+      .grid{grid-template-columns:1fr;}
+    }
+
+    .card{
+      background:rgba(17,26,51,.82);
+      border:1px solid rgba(255,255,255,.08);
+      border-radius:14px;
+      padding:16px;
+      display:flex;
+      flex-direction:column;
+      gap:10px;
+    }
+
+    .titleRow{
+      display:flex;
+      justify-content:space-between;
+      align-items:baseline;
+      gap:10px;
+      flex-wrap:wrap;
+    }
+    .card h2{margin:0;font-size:14px;color:var(--muted)}
+    .hint{font-size:12px;color:var(--muted)}
+    .small{font-size:12px;color:var(--muted)}
+    .hr{height:1px;background:rgba(255,255,255,.08);}
+
+    table{width:100%;border-collapse:collapse;font-size:12px}
+    th,td{
+      padding:7px 6px;
+      border-bottom:1px solid rgba(255,255,255,.07);
+      text-align:left;
+      white-space:nowrap;
+    }
+    th{color:var(--muted);font-weight:600}
+    .num{text-align:right;font-variant-numeric:tabular-nums}
+    .pos{color:var(--acc);font-weight:650}
+    .neg{color:var(--bad);font-weight:650}
+
+    .row{display:flex;gap:10px;flex-wrap:wrap;align-items:center}
+    .row .grow{flex:1 1 auto;min-width:220px}
+
+    .tag{
+      display:inline-flex;
+      align-items:center;
+      gap:6px;
+      padding:4px 10px;
+      border:1px solid rgba(255,255,255,.10);
+      border-radius:999px;
+      background:rgba(0,0,0,.14);
+      color:var(--muted);
+      font-size:12px;
+    }
+
+    .chips{display:flex;gap:8px;flex-wrap:wrap;align-items:center}
+    .chip{
+      display:flex;
+      gap:8px;
+      align-items:center;
+      padding:8px 10px;
+      border:1px solid rgba(255,255,255,.10);
+      border-radius:999px;
+      background:rgba(0,0,0,.14);
+      max-width:100%;
+    }
+    .chip span{overflow:hidden;text-overflow:ellipsis;white-space:nowrap;max-width:240px}
+    .chip button{padding:6px 10px}
+
+    .pane{overflow-x:auto; -webkit-overflow-scrolling:touch;}
+    .empty{
+      color:var(--muted);
+      font-size:12px;
+      padding:10px;
+      border:1px dashed rgba(255,255,255,.15);
+      border-radius:12px;
+      background:rgba(0,0,0,.12);
+    }
+
+    .modalOverlay{
+      display:none;
+      position:fixed; inset:0;
+      background:rgba(0,0,0,.55);
+      z-index:80;
+      align-items:center;
+      justify-content:center;
+      padding:20px;
+    }
+    .modalOverlay.open{display:flex}
+    .modalBox{
+      background:var(--card);
+      border:1px solid rgba(255,255,255,.12);
+      border-radius:16px;
+      padding:20px;
+      max-width:640px;
+      width:100%;
+      max-height:85vh;
+      overflow:auto;
+    }
+    .modalBox h2{margin:0 0 4px 0; font-size:18px}
+    .modalBox h3{margin:18px 0 6px 0; font-size:14px; color:var(--acc)}
+    .modalBox p, .modalBox li{font-size:13px; line-height:1.55; color:var(--text)}
+    .modalBox ul{margin:6px 0; padding-left:20px}
+    .modalBox code{
+      background:rgba(0,0,0,.3);
+      padding:1px 6px;
+      border-radius:6px;
+      font-size:12px;
+    }
+    .modalHeader{display:flex; justify-content:space-between; align-items:center; gap:10px}
+    .modalClose{padding:6px 12px}
+
+    .statGrid{
+      display:grid;
+      grid-template-columns:repeat(auto-fit, minmax(120px, 1fr));
+      gap:8px;
+      margin-bottom:10px;
+    }
+    .statBox{
+      background:rgba(0,0,0,.18);
+      border:1px solid rgba(255,255,255,.08);
+      border-radius:12px;
+      padding:10px;
+    }
+    .statBox .lbl{font-size:11px; color:var(--muted); margin-bottom:4px}
+    .statBox .val{font-size:18px; font-weight:700}
+    .statBox .val.pos{color:var(--acc)}
+    .statBox .val.neg{color:var(--bad)}
+    .chartSvg{width:100%; height:auto; display:block}
+
+    .statsSubView{display:none}
+    .statsSubView.active{display:block}
+    #viewStats.active{display:block}
+
+    .overviewGrid{
+      display:grid;
+      grid-template-columns:repeat(auto-fit, minmax(230px, 1fr));
+      gap:10px;
+    }
+    .miniBoard{
+      background:rgba(0,0,0,.18);
+      border:1px solid rgba(255,255,255,.08);
+      border-radius:12px;
+      padding:10px 12px;
+    }
+    .miniBoard h3{margin:0 0 8px 0; font-size:13px; color:var(--acc)}
+    .miniBoard ol{margin:0; padding-left:18px; font-size:12.5px}
+    .miniBoard li{margin-bottom:4px}
+    .miniBoard .sub{color:var(--muted); font-size:11px}
+
+    .compareTable{width:100%; border-collapse:collapse; font-size:13px}
+    .compareTable td, .compareTable th{padding:7px 8px; border-bottom:1px solid rgba(255,255,255,.06)}
+    .compareTable th{text-align:left; color:var(--muted); font-weight:600; font-size:11px}
+    .compareTable td.metric{color:var(--muted); font-size:12px}
+    .compareTable td.val{text-align:center; font-weight:650; font-variant-numeric:tabular-nums}
+    .compareTable td.win{color:var(--acc)}
+    .compareLegend{display:flex; gap:16px; align-items:center; margin:8px 0; font-size:12px}
+    .compareLegend .dot{display:inline-block; width:10px; height:10px; border-radius:50%; margin-right:6px}
+
+    #syncStatus.ok{color:var(--acc)}
+    #syncStatus.pending{color:#f0b429}
+    #syncStatus.err{color:var(--bad); font-weight:650}
+
+    .trashItem, .logItem{
+      display:flex;
+      justify-content:space-between;
+      align-items:center;
+      gap:10px;
+      padding:10px 8px;
+      border-bottom:1px solid rgba(255,255,255,.07);
+      font-size:12.5px;
+    }
+    .trashItem:last-child, .logItem:last-child{border-bottom:none}
+    .trashMeta, .logMeta{color:var(--muted); font-size:11px}
+    .trashActions{display:flex; gap:6px; flex-shrink:0}
+    .trashActions button{padding:6px 9px; font-size:11.5px}
+    .historyList{max-height:50vh; overflow-y:auto}
+
+    .toastContainer{
+      position:fixed;
+      top:16px;
+      right:16px;
+      z-index:100;
+      display:flex;
+      flex-direction:column;
+      gap:8px;
+      max-width:320px;
+      pointer-events:none;
+    }
+    .toast{
+      background:rgba(17,26,51,.97);
+      border:1px solid rgba(94,234,212,.35);
+      border-left:3px solid var(--acc);
+      border-radius:12px;
+      padding:12px 14px;
+      font-size:12.5px;
+      box-shadow:0 8px 24px rgba(0,0,0,.4);
+      pointer-events:auto;
+      cursor:pointer;
+      opacity:0;
+      transform:translateX(30px);
+      transition:opacity .25s ease, transform .25s ease;
+    }
+    .toast.show{opacity:1; transform:translateX(0)}
+    .toast .toastTitle{font-weight:700; margin-bottom:2px; display:flex; align-items:center; gap:6px}
+    .toast .toastBody{color:var(--muted)}
+
+    @media (max-width: 860px){
+      .toastContainer{
+        top:auto;
+        bottom:calc(var(--bottomnav-h) + 12px);
+        left:12px;
+        right:12px;
+        max-width:none;
+        align-items:stretch;
+      }
+    }
+
+    .dashboard{
+      display:grid;
+      grid-template-columns:repeat(3, 1fr);
+      gap:16px;
+    }
+    .dashCard{
+      background:rgba(17,26,51,.82);
+      border:1px solid rgba(255,255,255,.08);
+      border-radius:18px;
+      padding:28px 20px;
+      display:flex;
+      flex-direction:column;
+      align-items:center;
+      justify-content:center;
+      text-align:center;
+      gap:8px;
+      cursor:pointer;
+      transition:transform .12s ease, border-color .12s ease, background .12s ease;
+    }
+    .dashCard:hover{
+      transform:translateY(-3px);
+      border-color:rgba(94,234,212,.45);
+      background:rgba(17,26,51,1);
+    }
+    .dashCard:active{transform:translateY(0)}
+    .dashIcon{font-size:40px}
+    .dashTitle{font-size:18px; font-weight:700}
+    .dashSub{font-size:12.5px; color:var(--muted)}
+
+    .accueilRules{margin-bottom:16px}
+
+    /* ── Bottom nav (mobile only) ────────────────────────────── */
+    .bottomNav{
+      display:none;
+      position:fixed;
+      left:0; right:0; bottom:0;
+      height:var(--bottomnav-h);
+      background:rgba(9,13,26,.97);
+      border-top:1px solid rgba(255,255,255,.08);
+      z-index:60;
+      align-items:stretch;
+      justify-content:space-around;
+      backdrop-filter:blur(6px);
+    }
+    .bottomNavItem{
+      flex:1;
+      display:flex;
+      flex-direction:column;
+      align-items:center;
+      justify-content:center;
+      gap:2px;
+      background:transparent;
+      border:none;
+      border-radius:0;
+      color:var(--muted);
+      font-size:10.5px;
+      padding:6px 2px;
+    }
+    .bottomNavItem .ic{font-size:19px}
+    .bottomNavItem.active{color:var(--acc)}
+
+    /* ── Mobile layout ───────────────────────────────────────── */
+    @media (max-width: 860px){
+      .sidebar{
+        position:fixed;
+        top:0; left:0; bottom:0;
+        transform:translateX(-100%);
+        transition:transform .22s ease;
+        width:78vw;
+        max-width:300px;
+        height:100vh;
+        box-shadow:10px 0 30px rgba(0,0,0,.4);
+      }
+      .sidebar.open{transform:translateX(0)}
+      .sidebarClose{
+        display:flex;
+        margin-left:auto;
+        padding:6px 10px;
+      }
+      .backdrop{
+        display:none;
+        position:fixed; inset:0;
+        background:rgba(0,0,0,.5);
+        z-index:39;
+      }
+      .backdrop.open{display:block}
+
+      .hamburgerBtn{
+        display:flex;
+        align-items:center;
+        justify-content:center;
+        width:38px; height:38px;
+        padding:0;
+        font-size:18px;
+      }
+
+      .topBar{padding:14px 14px 6px 14px}
+      h1{font-size:16px}
+      .sub{font-size:10.5px}
+      .pageWrap{padding:6px 14px calc(var(--bottomnav-h) + 20px) 14px}
+
+      table{font-size:11px}
+      th,td{padding:6px 4px}
+
+      .row{gap:8px}
+      .row input, .row select{
+        width:100% !important;
+        min-width:0 !important;
+        flex:1 1 100%;
+      }
+      .row .tag, .row .small{flex:1 1 100%}
+      .row button{flex:1 1 auto}
+
+      .modalBox{padding:14px; max-height:90vh}
+      .modalBox h2{font-size:16px}
+
+      .statGrid{grid-template-columns:repeat(2, 1fr)}
+      .overviewGrid{grid-template-columns:1fr}
+
+      .dashboard{grid-template-columns:1fr; gap:12px}
+      .dashCard{padding:22px 16px}
+
+      .bottomNav{display:flex}
+    }
+  </style>
+</head>
+
+<body>
+  <div class="toastContainer" id="toastContainer"></div>
+
+  <div class="appShell">
+    <div class="backdrop" id="backdrop"></div>
+
+    <nav class="sidebar" id="sidebar">
+      <div class="sidebarBrand">
+        <span class="icon">♠️</span>
+        <span>Rion Poker Tour</span>
+        <button class="ghost sidebarClose" id="sidebarCloseBtn">✕</button>
+      </div>
+
+      <div class="navGroup">
+        <button class="navItem primary" id="tabAccueil">🏠 Accueil</button>
+        <button class="navItem ghost" id="tabSaisie">➕ Saisie</button>
+        <button class="navItem ghost" id="tabResultats">🏆 Résultats / PDF</button>
+        <button class="navItem ghost" id="tabStats">📊 Stats</button>
+      </div>
+
+      <div class="navDivider"></div>
+
+      <div class="navGroup secondary">
+        <button class="navItem ghost small" id="helpBtn">❓ Aide</button>
+        <button class="navItem ghost small" id="exportBtn">⬇️ Export JSON</button>
+        <button class="navItem ghost small" id="importBtn">⬆️ Import JSON</button>
+        <input type="file" id="importFile" accept="application/json" style="display:none" />
+        <button class="navItem ghost small" id="importPdfBtn">📄 Import PDF</button>
+        <input type="file" id="importPdfFile" accept="application/pdf" style="display:none" />
+        <button class="navItem ghost small" id="historyBtn">🕒 Historique</button>
+        <button class="navItem danger small" id="resetAllBtn">🗑️ Reset total</button>
+      </div>
+
+      <div class="sidebarFooter">
+        <button class="navItem ghost small" id="authBtn">🔐 Se connecter</button>
+        <div class="status" id="syncStatusSidebar">🔄 Connexion...</div>
+      </div>
+    </nav>
+
+    <div class="mainArea">
+      <div class="topBar">
+        <div style="display:flex; align-items:center; gap:10px">
+          <button class="ghost hamburgerBtn" id="hamburgerBtn">☰</button>
+          <div>
+            <h1>♠️ Rion Poker Tour</h1>
+          </div>
+        </div>
+        <div class="statusGroup">
+          <div class="status" id="status"></div>
+          <div class="status" id="syncStatus">🔄 Connexion...</div>
+        </div>
+      </div>
+
+      <div class="pageWrap">
+
+    <!-- VIEW 0: ACCUEIL -->
+    <div class="view active" id="viewAccueil">
+      <div class="dashboard">
+        <div class="dashCard" id="dashNouveau">
+          <div class="dashIcon">➕</div>
+          <div class="dashTitle">Nouveau tournoi</div>
+          <div class="dashSub">Ajouter des joueurs et saisir un tournoi</div>
+        </div>
+        <div class="dashCard" id="dashClassement">
+          <div class="dashIcon">🏆</div>
+          <div class="dashTitle">Classement</div>
+          <div class="dashSub">Résultats globaux, détail par tournoi, export PDF</div>
+        </div>
+        <div class="dashCard" id="dashStats">
+          <div class="dashIcon">📊</div>
+          <div class="dashTitle">Stats</div>
+          <div class="dashSub">Par joueur, vue d'ensemble, comparaison</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- VIEW 1: SAISIE -->
+    <div class="view" id="viewSaisie">
+      <div class="grid">
+        <div class="card">
+          <div class="titleRow">
+            <h2>Joueurs</h2>
+            <div class="hint" id="playerCount"></div>
+          </div>
+
+          <div class="row">
+            <input id="playerName" class="grow" placeholder="Nom du joueur" />
+            <button class="primary" id="addPlayerBtn">Ajouter</button>
+          </div>
+
+          <div class="hr"></div>
+
+          <div class="pane" id="playersList"></div>
+
+          <div class="small">Tu peux supprimer un joueur seulement s’il n’a aucun tournoi enregistré.</div>
+        </div>
+
+        <div class="card">
+          <div class="titleRow">
+            <h2 id="tournamentFormTitle">Nouveau tournoi</h2>
+            <div class="hint" id="draftInfo"></div>
+          </div>
+
+          <div class="row">
+            <input id="tDate" type="date" />
+            <input id="stake" type="number" min="0" step="1" style="width:110px" />
+            <input id="rebuyMinutes" type="number" min="0" step="5" placeholder="Recave (min)" style="width:140px" />
+            <span class="tag">Mise = buy-in & recave</span>
+          </div>
+
+          <div class="row">
+            <input id="payouts" class="grow" placeholder="Payouts % ex: 50,30,20 (optionnel)" />
+            <span class="small">Si vide: gains à saisir à la main.</span>
+          </div>
+
+          <div class="hr"></div>
+
+          <div class="row">
+            <select id="playerSelect" class="grow"></select>
+            <input id="rebuyCount" type="number" min="0" step="1" placeholder="Recaves (nb)" style="width:140px" />
+            <input id="position" type="number" min="1" step="1" placeholder="Place (1..)" style="width:130px" />
+            <input id="winningsOverride" type="number" min="0" step="1" placeholder="Gain € (optionnel)" style="width:170px" />
+            <button class="primary" id="addResultBtn">Ajouter</button>
+            <button id="clearDraftBtn">Vider</button>
+          </div>
+
+          <div class="hr"></div>
+
+          <div class="pane" id="draftTable"></div>
+
+          <div class="row" style="justify-content:space-between; gap:10px">
+            <div class="small" id="potInfo"></div>
+            <div class="row">
+              <button class="ghost" id="cancelEditBtn" style="display:none">Annuler modification</button>
+              <button class="primary" id="saveTournamentBtn">Enregistrer le tournoi</button>
+            </div>
+          </div>
+
+          <div class="small" id="editHint" style="display:none">
+            Mode modification : tu modifies puis “Mettre à jour le tournoi”.
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- VIEW 2: RESULTATS -->
+    <div class="view" id="viewResultats">
+      <div class="grid">
+        <div class="card">
+          <div class="titleRow">
+            <h2>Classement global</h2>
+            <div class="row" style="gap:6px">
+              <button class="primary" id="globalSortProfit" style="padding:6px 10px; font-size:11.5px">💰 Profit</button>
+              <button class="ghost" id="globalSortPoints" style="padding:6px 10px; font-size:11.5px">🏅 Points</button>
+            </div>
+          </div>
+          <div class="hint" id="globalInfo"></div>
+
+          <div class="pane" id="globalTable"></div>
+        </div>
+
+        <div class="card">
+          <div class="titleRow">
+            <h2>Détail du tournoi</h2>
+            <div class="hint" id="tournoiInfo"></div>
+          </div>
+
+          <div class="row">
+            <select id="tournamentSelect" class="grow"></select>
+            <button class="primary" id="pdfBtn">Télécharger PDF</button>
+          </div>
+
+          <div class="row">
+            <button class="ghost" id="editTournamentBtn">Modifier ce tournoi</button>
+            <button class="danger" id="deleteTournamentBtn" title="Supprime le tournoi sélectionné">Supprimer ce tournoi</button>
+            <button class="danger" id="clearHistoryBtn" title="Supprime tous les tournois">Vider tournois</button>
+          </div>
+
+          <div class="hr"></div>
+
+          <div class="pane" id="tournoiTable"></div>
+        </div>
+      </div>
+    </div>
+
+    <!-- VIEW 3: STATS -->
+    <div class="view" id="viewStats">
+      <div class="row" style="margin-bottom:2px">
+        <button class="primary" id="statsSubJoueur">Joueur</button>
+        <button class="ghost" id="statsSubOverview">Vue d'ensemble</button>
+        <button class="ghost" id="statsSubCompare">Comparaison</button>
+      </div>
+
+      <!-- SOUS-VUE: JOUEUR -->
+      <div class="statsSubView active" id="statsViewJoueur">
+        <div class="grid">
+          <div class="card">
+            <div class="titleRow">
+              <h2>Stats joueur</h2>
+              <div class="hint" id="statsHint"></div>
+            </div>
+
+            <div class="row">
+              <select id="statsPlayerSelect" class="grow"></select>
+            </div>
+
+            <div class="hr"></div>
+
+            <div class="pane" id="statsSummary" style="overflow:auto"></div>
+          </div>
+
+          <div class="card">
+            <div class="titleRow">
+              <h2>Évolution</h2>
+              <div class="hint" id="statsChartHint"></div>
+            </div>
+
+            <div id="statsChartWrap"></div>
+
+            <div class="hr"></div>
+
+            <div class="pane" id="statsHistory" style="overflow:auto"></div>
+          </div>
+        </div>
+      </div>
+
+      <!-- SOUS-VUE: VUE D'ENSEMBLE -->
+      <div class="statsSubView" id="statsViewOverview">
+        <div class="card" style="height:100%">
+          <div class="titleRow">
+            <h2>Vue d'ensemble</h2>
+            <div class="hint" id="overviewHint"></div>
+          </div>
+          <div class="pane" id="overviewContent" style="overflow:auto"></div>
+        </div>
+      </div>
+
+      <!-- SOUS-VUE: COMPARAISON -->
+      <div class="statsSubView" id="statsViewCompare">
+        <div class="card" style="height:100%">
+          <div class="titleRow">
+            <h2>Comparer deux joueurs</h2>
+            <div class="hint"></div>
+          </div>
+
+          <div class="row">
+            <select id="compareSelectA" class="grow"></select>
+            <span class="tag">vs</span>
+            <select id="compareSelectB" class="grow"></select>
+          </div>
+
+          <div class="hr"></div>
+
+          <div class="pane" id="compareContent" style="overflow:auto"></div>
+        </div>
+      </div>
+    </div>
+
+      </div>
+    </div>
+
+    <nav class="bottomNav">
+      <button class="bottomNavItem" id="bnAccueil"><span class="ic">🏠</span><span>Accueil</span></button>
+      <button class="bottomNavItem" id="bnSaisie"><span class="ic">➕</span><span>Saisie</span></button>
+      <button class="bottomNavItem" id="bnResultats"><span class="ic">🏆</span><span>Résultats</span></button>
+      <button class="bottomNavItem" id="bnStats"><span class="ic">📊</span><span>Stats</span></button>
+    </nav>
+  </div>
+
+  <!-- MODALE HISTORIQUE -->
+  <div class="modalOverlay" id="historyModal">
+    <div class="modalBox" style="max-width:560px">
+      <div class="modalHeader">
+        <h2>🕒 Historique</h2>
+        <button class="ghost modalClose" id="historyCloseBtn">Fermer</button>
+      </div>
+
+      <div class="row" style="margin-bottom:4px">
+        <button class="primary" id="historySubTrash">🗑️ Corbeille</button>
+        <button class="ghost" id="historySubLog">📋 Journal</button>
+      </div>
+
+      <div id="trashContent"></div>
+      <div id="logContent" style="display:none"></div>
+    </div>
+  </div>
+
+  <!-- MODALE CONNEXION -->
+  <div class="modalOverlay" id="loginModal">
+    <div class="modalBox" style="max-width:380px">
+      <div class="modalHeader">
+        <h2>🔐 Connexion</h2>
+        <button class="ghost modalClose" id="loginCloseBtn">Fermer</button>
+      </div>
+      <p class="small">Utilise l'identifiant partagé du groupe pour pouvoir modifier les données. La lecture reste libre pour tout le monde, même sans connexion.</p>
+      <div class="row" style="flex-direction:column; align-items:stretch">
+        <input id="loginEmail" type="email" placeholder="Email du groupe" autocomplete="username" />
+        <input id="loginPassword" type="password" placeholder="Mot de passe" autocomplete="current-password" />
+      </div>
+      <div class="small" id="loginError" style="color:var(--bad); min-height:16px"></div>
+      <div class="row">
+        <button class="primary" id="loginSubmitBtn" style="flex:1 1 auto">Se connecter</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- MODALE AIDE -->
+  <div class="modalOverlay" id="helpModal">
+    <div class="modalBox">
+      <div class="modalHeader">
+        <h2>❓ Comment ça marche</h2>
+        <button class="ghost modalClose" id="helpCloseBtn">Fermer</button>
+      </div>
+
+      <h3>1. Ajouter des joueurs</h3>
+      <p>Onglet <b>Saisie</b> → tape un nom et clique "Ajouter". Un joueur ne peut être supprimé que s'il n'a encore aucun tournoi enregistré.</p>
+
+      <h3>2. Créer un tournoi</h3>
+      <ul>
+        <li><b>Date</b>, <b>Stake</b> (mise de base, ex 5€) et <b>Recave</b> (durée en minutes où les recaves sont autorisées) — c'est juste indicatif, la durée n'est pas utilisée dans les calculs.</li>
+        <li><b>Payouts %</b> (optionnel) : ex <code>50,30,20</code> répartit le pot entre les 3 premiers. Si laissé vide, tu saisis le gain de chaque joueur à la main.</li>
+        <li>Pour chaque joueur : choisis-le dans la liste, indique son <b>nombre de recaves</b>, sa <b>place finale</b> et éventuellement un <b>gain manuel</b> (utile si pas de payouts %, ou pour un gain spécial).</li>
+        <li>Clique "Ajouter" pour chaque joueur, puis "Enregistrer le tournoi" une fois tout le monde saisi.</li>
+      </ul>
+
+      <h3>3. Comment sont calculés Mise / Gain / Profit</h3>
+      <ul>
+        <li><b>Mise</b> = Stake × (1 + nombre de recaves). Ex : stake 5€, 1 recave → mise = 10€.</li>
+        <li><b>Gain</b> = soit le montant saisi à la main, soit calculé automatiquement à partir du % de payout et de sa place.</li>
+        <li><b>Profit</b> = Gain − Mise.</li>
+      </ul>
+
+      <h3>4. Règles de points et classement</h3>
+      <ul>
+        <li>Les joueurs sont classés par <b>place finale</b> du tournoi (1er, 2e, 3e...).</li>
+        <li><b>Égalités gérées</b> à la façon "1,2,3,3,5" : si deux joueurs sont 3e ex æquo, le suivant est 5e (pas 4e). Chacun des deux ex æquo reçoit le même nombre de points.</li>
+        <li><b>Points</b> = (nombre total de joueurs du tournoi) − rang + 1. Le 1er d'un tournoi à 7 joueurs gagne donc 7 points, le dernier 1 point.</li>
+        <li>Le <b>classement général</b> additionne les points (et le profit) de tous les tournois joués par chaque joueur.</li>
+      </ul>
+
+      <h3>5. Résultats / PDF</h3>
+      <ul>
+        <li>L'onglet <b>Résultats / PDF</b> affiche le classement global (trié par profit) et le détail d'un tournoi au choix.</li>
+        <li><b>Télécharger PDF</b> exporte tout : classement par points, classement par profit, puis chaque tournoi en détail (du plus récent au plus ancien).</li>
+        <li><b>Modifier / Supprimer un tournoi</b> : sélectionne-le dans la liste déroulante avant de cliquer.</li>
+      </ul>
+
+      <h3>6. Onglet Stats</h3>
+      <p>Trois sous-onglets pour explorer les statistiques :</p>
+      <ul>
+        <li><b>Joueur</b> : choisis un joueur pour voir son résumé complet et son historique.
+          <ul>
+            <li><b>Podiums</b> : nombre de fois où le joueur a fini dans les 3 premiers (par rang, égalités comprises).</li>
+            <li><b>Rang moyen</b> : moyenne de ses classements sur tous ses tournois. Plus c'est bas, mieux c'est (1 = toujours premier).</li>
+            <li><b>ROI (Retour sur investissement)</b> = (Profit total ÷ Total misé) × 100. Ça mesure combien un joueur récupère par rapport à ce qu'il a misé, ce qui permet de comparer des joueurs qui n'ont pas mis les mêmes montants en jeu. Ex : 35€ misés au total pour 50€ de profit → ROI de 143% (il a plus que doublé sa mise).</li>
+            <li><b>Série actuelle</b> : nombre de tournois consécutifs (en partant du plus récent) où le joueur termine gagnant (profit &gt; 0) ou perdant (profit &lt; 0).</li>
+            <li><b>Meilleur / Pire tournoi</b> : le tournoi où le joueur a fait le plus gros profit / la plus grosse perte.</li>
+            <li>Les deux graphiques montrent l'évolution du profit cumulé et des points gagnés, tournoi après tournoi.</li>
+          </ul>
+        </li>
+        <li><b>Vue d'ensemble</b> : classements globaux (plus de victoires, meilleur ROI, plus régulier, le plus assidu, plus gros gain/perte sur un seul tournoi), plus quelques chiffres clés (cagnotte totale distribuée, recaves totales...).
+          <ul>
+            <li>Les classements <b>ROI</b> et <b>régularité</b> n'incluent que les joueurs ayant joué <b>au moins 2 tournois</b>, pour éviter qu'un joueur avec une seule victoire chanceuse fausse le classement.</li>
+          </ul>
+        </li>
+        <li><b>Comparaison</b> : choisis deux joueurs pour comparer leurs stats côte à côte (tableau) et superposer leur courbe de profit cumulé sur la même échelle de temps. La meilleure valeur de chaque ligne est surlignée en vert.</li>
+      </ul>
+
+      <h3>7. Sauvegarder / restaurer les données</h3>
+      <ul>
+        <li>Toutes les données sont stockées <b>localement dans ton navigateur</b> (elles ne sont pas partagées automatiquement entre appareils ou personnes).</li>
+        <li><b>Export JSON</b> : télécharge une sauvegarde complète.</li>
+        <li><b>Import JSON</b> : restaure une sauvegarde (écrase les données actuelles).</li>
+        <li><b>Import PDF</b> : reconstruit automatiquement joueurs + tournois à partir d'un PDF exporté par cette appli — pratique si tu as perdu tes données mais gardé un PDF.</li>
+      </ul>
+
+      <h3>8. Reset total</h3>
+      <p>Supprime définitivement tous les joueurs et tournois. Pense à exporter un JSON ou PDF avant si tu veux garder une trace.</p>
+    </div>
+  </div>
+
+<script type="module">
+  import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js";
+  import { getFirestore, doc, setDoc, onSnapshot } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js";
+  import { getAuth, signInWithEmailAndPassword, signOut, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-auth.js";
+
+  const firebaseConfig = {
+    apiKey: "AIzaSyCuQpJsdeWZCgbJxdKvJIxkctuVP4z4t6Y",
+    authDomain: "rion-poker-tour.firebaseapp.com",
+    projectId: "rion-poker-tour",
+    storageBucket: "rion-poker-tour.firebasestorage.app",
+    messagingSenderId: "903144297330",
+    appId: "1:903144297330:web:d83b9445ec9ffa989b83eb"
+  };
+
+  const fbApp = initializeApp(firebaseConfig);
+  const db = getFirestore(fbApp);
+  const stateDocRef = doc(db, "poker_tracker", "state");
+  const auth = getAuth(fbApp);
+
+(() => {
+  const CACHE_KEY = "poker_tournoi_tracker_v6_firestore_cache";
+
+  const $ = (id) => document.getElementById(id);
+
+  // Tabs & views
+  const status = $("status");
+  const syncStatus = $("syncStatus");
+  const syncStatusSidebar = $("syncStatusSidebar");
+  const sidebar = $("sidebar");
+  const backdrop = $("backdrop");
+  const hamburgerBtn = $("hamburgerBtn");
+  const sidebarCloseBtn = $("sidebarCloseBtn");
+  const bnAccueil = $("bnAccueil");
+  const bnSaisie = $("bnSaisie");
+  const bnResultats = $("bnResultats");
+  const bnStats = $("bnStats");
+  const tabAccueil = $("tabAccueil");
+  const tabSaisie = $("tabSaisie");
+  const tabResultats = $("tabResultats");
+  const tabStats = $("tabStats");
+  const viewAccueil = $("viewAccueil");
+  const viewSaisie = $("viewSaisie");
+  const viewResultats = $("viewResultats");
+  const viewStats = $("viewStats");
+  const dashNouveau = $("dashNouveau");
+  const dashClassement = $("dashClassement");
+  const dashStats = $("dashStats");
+  const statsPlayerSelect = $("statsPlayerSelect");
+  const statsHint = $("statsHint");
+  const statsSummary = $("statsSummary");
+  const statsChartWrap = $("statsChartWrap");
+  const statsChartHint = $("statsChartHint");
+  const statsHistory = $("statsHistory");
+
+  const statsSubJoueur = $("statsSubJoueur");
+  const statsSubOverview = $("statsSubOverview");
+  const statsSubCompare = $("statsSubCompare");
+  const statsViewJoueur = $("statsViewJoueur");
+  const statsViewOverview = $("statsViewOverview");
+  const statsViewCompare = $("statsViewCompare");
+  const overviewHint = $("overviewHint");
+  const overviewContent = $("overviewContent");
+  const compareSelectA = $("compareSelectA");
+  const compareSelectB = $("compareSelectB");
+  const compareContent = $("compareContent");
+
+  // Players UI
+  const playerName = $("playerName");
+  const addPlayerBtn = $("addPlayerBtn");
+  const playersList = $("playersList");
+  const playerCount = $("playerCount");
+
+  // Tournament form UI
+  const tournamentFormTitle = $("tournamentFormTitle");
+  const tDate = $("tDate");
+  const stake = $("stake");
+  const rebuyMinutes = $("rebuyMinutes");
+  const payouts = $("payouts");
+
+  const playerSelect = $("playerSelect");
+  const rebuyCount = $("rebuyCount");
+  const position = $("position");
+  const winningsOverride = $("winningsOverride");
+  const addResultBtn = $("addResultBtn");
+  const clearDraftBtn = $("clearDraftBtn");
+  const draftTable = $("draftTable");
+  const potInfo = $("potInfo");
+  const draftInfo = $("draftInfo");
+  const saveTournamentBtn = $("saveTournamentBtn");
+
+  const cancelEditBtn = $("cancelEditBtn");
+  const editHint = $("editHint");
+
+  // Results UI
+  const globalInfo = $("globalInfo");
+  const globalTable = $("globalTable");
+  const globalSortProfit = $("globalSortProfit");
+  const globalSortPoints = $("globalSortPoints");
+  const tournamentSelect = $("tournamentSelect");
+  const tournoiInfo = $("tournoiInfo");
+  const tournoiTable = $("tournoiTable");
+  const pdfBtn = $("pdfBtn");
+  const editTournamentBtn = $("editTournamentBtn");
+  const deleteTournamentBtn = $("deleteTournamentBtn");
+
+  // Danger buttons
+  const resetAllBtn = $("resetAllBtn");
+  const clearHistoryBtn = $("clearHistoryBtn");
+  const exportBtn = $("exportBtn");
+  const importBtn = $("importBtn");
+  const importFile = $("importFile");
+  const importPdfBtn = $("importPdfBtn");
+  const importPdfFile = $("importPdfFile");
+  const helpBtn = $("helpBtn");
+  const helpModal = $("helpModal");
+  const helpCloseBtn = $("helpCloseBtn");
+
+  const authBtn = $("authBtn");
+  const loginModal = $("loginModal");
+  const loginCloseBtn = $("loginCloseBtn");
+  const loginEmail = $("loginEmail");
+  const loginPassword = $("loginPassword");
+  const loginError = $("loginError");
+  const loginSubmitBtn = $("loginSubmitBtn");
+
+  const historyBtn = $("historyBtn");
+  const historyModal = $("historyModal");
+  const historyCloseBtn = $("historyCloseBtn");
+  const historySubTrash = $("historySubTrash");
+  const historySubLog = $("historySubLog");
+  const trashContent = $("trashContent");
+  const logContent = $("logContent");
+  const toastContainer = $("toastContainer");
+
+  /** state */
+  const state = { players: [], tournaments: [], trash: [], log: [] };
+  const NAME_KEY = "poker_tournoi_tracker_display_name";
+
+  // Draft
+  let draft = new Map();
+  let editingTournamentId = null;
+
+  // defaults
+  tDate.value = new Date().toISOString().slice(0,10);
+  stake.value = 5;
+  rebuyMinutes.value = 60;
+  payouts.value = "50,30,20";
+
+  // helpers
+  const uid = () => Math.random().toString(16).slice(2) + Date.now().toString(16);
+  const euro = (n) => (Number.isFinite(n) ? n : 0).toLocaleString("fr-FR", { style:"currency", currency:"EUR" });
+  const sum = (arr) => arr.reduce((a,b)=>a+b,0);
+
+  function escapeHtml(str){
+    return String(str)
+      .replaceAll("&","&amp;")
+      .replaceAll("<","&lt;")
+      .replaceAll(">","&gt;")
+      .replaceAll('"',"&quot;")
+      .replaceAll("'","&#039;");
+  }
+
+  function getDisplayName(){
+    let n = localStorage.getItem(NAME_KEY);
+    if (!n){
+      n = (prompt("Quel est ton prénom ? (affiché dans l'historique des modifications)") || "").trim() || "Anonyme";
+      localStorage.setItem(NAME_KEY, n);
+    }
+    return n;
+  }
+
+  function fmtDateTime(ts){
+    try { return new Date(ts).toLocaleString("fr-FR", { day:"2-digit", month:"2-digit", year:"2-digit", hour:"2-digit", minute:"2-digit" }); }
+    catch { return ""; }
+  }
+
+  // ── Notifications temps réel ────────────────────────────────
+  let lastSeenLogTs = 0;
+  let hasLoadedOnce = false;
+
+  function showToast(title, body){
+    const el = document.createElement("div");
+    el.className = "toast";
+    el.innerHTML = `
+      <div class="toastTitle">🔔 ${escapeHtml(title)}</div>
+      ${body ? `<div class="toastBody">${escapeHtml(body)}</div>` : ""}
+    `;
+    el.addEventListener("click", () => dismissToast(el));
+    toastContainer.appendChild(el);
+    requestAnimationFrame(() => el.classList.add("show"));
+    setTimeout(() => dismissToast(el), 6000);
+  }
+
+  function dismissToast(el){
+    if (!el.isConnected) return;
+    el.classList.remove("show");
+    setTimeout(() => el.remove(), 300);
+  }
+
+  function logAction(action){
+    const name = getDisplayName();
+    const entry = { ts: Date.now(), name, action };
+    state.log = state.log || [];
+    state.log.unshift(entry);
+    state.log = state.log.slice(0, 50);
+    // On a fait l'action nous-même : pas besoin de se notifier soi-même
+    // quand l'écho de cette écriture reviendra via onSnapshot.
+    lastSeenLogTs = entry.ts;
+  }
+
+  function trashPush(entry){
+    state.trash = state.trash || [];
+    state.trash.unshift({ id: uid(), deletedAt: Date.now(), deletedBy: getDisplayName(), ...entry });
+    state.trash = state.trash.slice(0, 30);
+  }
+
+  function setSyncStatus(text, cls){
+    syncStatus.textContent = text;
+    syncStatus.className = "status" + (cls ? " " + cls : "");
+    syncStatusSidebar.textContent = text;
+    syncStatusSidebar.className = "status" + (cls ? " " + cls : "");
+  }
+
+  function loadCache(){
+    try {
+      const raw = localStorage.getItem(CACHE_KEY);
+      return raw ? JSON.parse(raw) : null;
+    } catch { return null; }
+  }
+
+  function saveCache(){
+    try { localStorage.setItem(CACHE_KEY, JSON.stringify(state)); } catch {}
+  }
+
+  // Affichage instantané depuis le cache local le temps que Firestore réponde
+  const cached = loadCache();
+  if (cached){
+    state.players = Array.isArray(cached.players) ? cached.players : [];
+    state.tournaments = Array.isArray(cached.tournaments) ? cached.tournaments : [];
+    state.trash = Array.isArray(cached.trash) ? cached.trash : [];
+    state.log = Array.isArray(cached.log) ? cached.log : [];
+  }
+
+  // Sauvegarde vers Firestore (partagée entre tous les appareils connectés)
+  function save(){
+    setSyncStatus("🟡 Sauvegarde...", "pending");
+    setDoc(stateDocRef, { players: state.players, tournaments: state.tournaments, trash: state.trash || [], log: state.log || [] })
+      .then(() => {
+        saveCache();
+        setSyncStatus("🟢 Synchronisé", "ok");
+      })
+      .catch(err => {
+        console.error("Erreur de sauvegarde Firestore:", err);
+        setSyncStatus("🔴 Erreur de sauvegarde", "err");
+        alert("Impossible d'enregistrer en ligne. Vérifie ta connexion internet — tes derniers changements ne sont peut-être pas partagés.");
+      });
+  }
+
+  // Écoute en temps réel : toute modif faite depuis un autre appareil arrive ici automatiquement
+  onSnapshot(stateDocRef,
+    (docSnap) => {
+      if (docSnap.exists()){
+        const data = docSnap.data();
+        state.players = Array.isArray(data.players) ? data.players : [];
+        state.tournaments = Array.isArray(data.tournaments) ? data.tournaments : [];
+        state.trash = Array.isArray(data.trash) ? data.trash : [];
+        state.log = Array.isArray(data.log) ? data.log : [];
+      } else {
+        // Premier lancement : le document n'existe pas encore, on le crée
+        setDoc(stateDocRef, { players: state.players, tournaments: state.tournaments, trash: state.trash || [], log: state.log || [] });
+      }
+      saveCache();
+      setSyncStatus("🟢 Synchronisé", "ok");
+      draft = new Map();
+
+      const latest = state.log && state.log[0];
+      if (!hasLoadedOnce){
+        // Premier chargement de la page : on note où on en est, sans notifier.
+        hasLoadedOnce = true;
+        lastSeenLogTs = latest ? latest.ts : 0;
+      } else if (latest && latest.ts > lastSeenLogTs){
+        // Une action est arrivée qu'on n'a pas faite nous-même : on notifie.
+        showToast(latest.name, latest.action);
+        lastSeenLogTs = latest.ts;
+      }
+
+      renderAll();
+      if (historyModal.classList.contains("open")){
+        if (historySubTrash.classList.contains("primary")) renderTrash(); else renderLog();
+      }
+    },
+    (err) => {
+      console.error("Erreur de synchronisation Firestore:", err);
+      setSyncStatus("🔴 Hors ligne (données locales)", "err");
+    }
+  );
+
+  function parsePercents(str){
+    const s = (str || "").trim();
+    if (!s) return [];
+    return s.split(/[,; ]+/).map(x => x.trim()).filter(Boolean).map(Number).filter(n => Number.isFinite(n) && n >= 0);
+  }
+
+  function playerById(id){ return state.players.find(p => p.id === id); }
+
+  function playerHasTournaments(playerId){
+    return state.tournaments.some(t => (t.results || []).some(r => r.playerId === playerId));
+  }
+
+  function computePot(stakeValue, baseResults){
+    const totalRebuys = sum(baseResults.map(r => Number(r.rebuyCount || 0)));
+    return stakeValue * (baseResults.length + totalRebuys);
+  }
+
+  function winningsFromPayouts(pot, percents, position){
+    if (!percents.length) return 0;
+    const idx = position - 1;
+    if (idx < 0 || idx >= percents.length) return 0;
+    return Math.round((pot * percents[idx]) / 100);
+  }
+
+  // competition ranking (1,2,3,3,5)
+  function buildCompetitionRankMap(results){
+    const counts = new Map();
+    for (const r of results){
+      const p = Number(r.position || 0);
+      if (!Number.isFinite(p) || p < 1) continue;
+      counts.set(p, (counts.get(p) || 0) + 1);
+    }
+    const positions = Array.from(counts.keys()).sort((a,b)=>a-b);
+    const rankMap = new Map();
+    let rank = 1;
+    for (const pos of positions){
+      const c = counts.get(pos);
+      rankMap.set(pos, rank);
+      rank += c;
+    }
+    return rankMap;
+  }
+
+  function pointsFromRank(rank, totalPlayers){
+    return Math.max(1, totalPlayers - rank + 1);
+  }
+
+  function setTab(which){
+    const accueil = which === "accueil";
+    const saisie = which === "saisie";
+    const resultats = which === "resultats";
+    const stats = which === "stats";
+
+    viewAccueil.classList.toggle("active", accueil);
+    viewSaisie.classList.toggle("active", saisie);
+    viewResultats.classList.toggle("active", resultats);
+    viewStats.classList.toggle("active", stats);
+
+    tabAccueil.classList.toggle("primary", accueil);
+    tabAccueil.classList.toggle("ghost", !accueil);
+    tabSaisie.classList.toggle("primary", saisie);
+    tabSaisie.classList.toggle("ghost", !saisie);
+    tabResultats.classList.toggle("primary", resultats);
+    tabResultats.classList.toggle("ghost", !resultats);
+    tabStats.classList.toggle("primary", stats);
+    tabStats.classList.toggle("ghost", !stats);
+
+    bnAccueil.classList.toggle("active", accueil);
+    bnSaisie.classList.toggle("active", saisie);
+    bnResultats.classList.toggle("active", resultats);
+    bnStats.classList.toggle("active", stats);
+
+    if (resultats) renderResultats();
+    if (stats) renderActiveStatsSubView();
+
+    closeSidebar();
+    window.scrollTo(0, 0);
+  }
+
+  function openSidebar(){
+    sidebar.classList.add("open");
+    backdrop.classList.add("open");
+  }
+  function closeSidebar(){
+    sidebar.classList.remove("open");
+    backdrop.classList.remove("open");
+  }
+
+  hamburgerBtn.addEventListener("click", openSidebar);
+  sidebarCloseBtn.addEventListener("click", closeSidebar);
+  backdrop.addEventListener("click", closeSidebar);
+
+  tabAccueil.addEventListener("click", () => setTab("accueil"));
+  tabSaisie.addEventListener("click", () => setTab("saisie"));
+  tabResultats.addEventListener("click", () => setTab("resultats"));
+  tabStats.addEventListener("click", () => setTab("stats"));
+
+  bnAccueil.addEventListener("click", () => setTab("accueil"));
+  bnSaisie.addEventListener("click", () => setTab("saisie"));
+  bnResultats.addEventListener("click", () => setTab("resultats"));
+  bnStats.addEventListener("click", () => setTab("stats"));
+
+  dashNouveau.addEventListener("click", () => setTab("saisie"));
+  dashClassement.addEventListener("click", () => setTab("resultats"));
+  dashStats.addEventListener("click", () => setTab("stats"));
+
+  function setStatsSubTab(which){
+    const joueur = which === "joueur";
+    const overview = which === "overview";
+    const compare = which === "compare";
+
+    statsViewJoueur.classList.toggle("active", joueur);
+    statsViewOverview.classList.toggle("active", overview);
+    statsViewCompare.classList.toggle("active", compare);
+
+    statsSubJoueur.classList.toggle("primary", joueur);
+    statsSubJoueur.classList.toggle("ghost", !joueur);
+    statsSubOverview.classList.toggle("primary", overview);
+    statsSubOverview.classList.toggle("ghost", !overview);
+    statsSubCompare.classList.toggle("primary", compare);
+    statsSubCompare.classList.toggle("ghost", !compare);
+
+    if (joueur) renderStats();
+    if (overview) renderOverview();
+    if (compare) renderCompare();
+  }
+
+  statsSubJoueur.addEventListener("click", () => setStatsSubTab("joueur"));
+  statsSubOverview.addEventListener("click", () => setStatsSubTab("overview"));
+  statsSubCompare.addEventListener("click", () => setStatsSubTab("compare"));
+
+  function renderStatus(){
+    status.textContent = `${state.players.length} joueur(s) • ${state.tournaments.length} tournoi(s)`;
+  }
+
+  function renderPlayers(){
+    playerCount.textContent = `${state.players.length} joueur(s)`;
+
+    playerSelect.innerHTML = "";
+    const opt0 = document.createElement("option");
+    opt0.value = "";
+    opt0.textContent = state.players.length ? "Choisir un joueur..." : "Ajoute des joueurs d'abord";
+    playerSelect.appendChild(opt0);
+    state.players.forEach(p => {
+      const opt = document.createElement("option");
+      opt.value = p.id;
+      opt.textContent = p.name;
+      playerSelect.appendChild(opt);
+    });
+
+    addResultBtn.disabled = state.players.length === 0;
+    saveTournamentBtn.disabled = state.players.length === 0;
+
+    if (!state.players.length){
+      playersList.innerHTML = `<div class="empty">Ajoute des joueurs pour commencer.</div>`;
+      return;
+    }
+
+    playersList.innerHTML = `
+      <div class="chips">
+        ${state.players.map(p => {
+          const disabled = playerHasTournaments(p.id);
+          return `
+            <div class="chip" title="${escapeHtml(p.name)}">
+              <span>${escapeHtml(p.name)}</span>
+              <button class="ghost" data-editplayer="${p.id}" title="Renommer ce joueur">✏️</button>
+              <button class="danger" data-delplayer="${p.id}" ${disabled ? "disabled" : ""} title="${disabled ? "Impossible: ce joueur a déjà des tournois" : "Supprimer ce joueur"}">Supprimer</button>
+            </div>
+          `;
+        }).join("")}
+      </div>
+    `;
+
+    playersList.querySelectorAll("button[data-editplayer]").forEach(btn => {
+      btn.addEventListener("click", () => {
+        if (!requireAuth()) return;
+        const id = btn.getAttribute("data-editplayer");
+        const p = playerById(id);
+        if (!p) return;
+        const newName = (prompt("Renommer le joueur :", p.name) || "").trim();
+        if (!newName || newName === p.name) return;
+        if (state.players.some(x => x.id !== id && x.name.toLowerCase() === newName.toLowerCase())){
+          alert("Ce nom est déjà utilisé par un autre joueur.");
+          return;
+        }
+        const oldName = p.name;
+        p.name = newName;
+        logAction(`Joueur "${oldName}" renommé en "${newName}"`);
+        save();
+        renderAll();
+      });
+    });
+
+    playersList.querySelectorAll("button[data-delplayer]").forEach(btn => {
+      btn.addEventListener("click", () => {
+        if (!requireAuth()) return;
+        const id = btn.getAttribute("data-delplayer");
+        const p = playerById(id);
+        state.players = state.players.filter(p => p.id !== id);
+        draft.delete(id);
+        logAction(`Joueur "${p ? p.name : id}" supprimé`);
+        save();
+        renderAll();
+      });
+    });
+  }
+
+  function isEditing(){ return editingTournamentId !== null; }
+
+  function enterEditMode(tournament){
+    editingTournamentId = tournament.id;
+
+    tournamentFormTitle.textContent = "Modifier tournoi";
+    saveTournamentBtn.textContent = "Mettre à jour le tournoi";
+    cancelEditBtn.style.display = "";
+    editHint.style.display = "";
+
+    tDate.value = tournament.date || new Date().toISOString().slice(0,10);
+    stake.value = Number(tournament.stake || 5);
+    rebuyMinutes.value = Number(tournament.rebuyMinutes || 60);
+    payouts.value = (tournament.payoutPercents || []).join(",");
+
+    draft = new Map();
+    for (const r of (tournament.results || [])){
+      draft.set(r.playerId, {
+        playerId: r.playerId,
+        rebuyCount: Number(r.rebuyCount || 0),
+        position: Number(r.position || 0),
+        winnings: Number(r.winnings || 0),
+        winningsIsManual: Boolean(r.winningsIsManual)
+      });
+    }
+
+    renderDraft();
+    setTab("saisie");
+  }
+
+  function exitEditMode(){
+    editingTournamentId = null;
+    tournamentFormTitle.textContent = "Nouveau tournoi";
+    saveTournamentBtn.textContent = "Enregistrer le tournoi";
+    cancelEditBtn.style.display = "none";
+    editHint.style.display = "none";
+  }
+
+  cancelEditBtn.addEventListener("click", () => {
+    exitEditMode();
+    draft = new Map();
+    renderDraft();
+  });
+
+  function computeDraftComputed(){
+    const stakeValue = Number(stake.value || 5);
+    const percents = parsePercents(payouts.value);
+
+    const base = Array.from(draft.values());
+    const pot = computePot(stakeValue, base);
+    const totalPlayers = base.length;
+
+    const rankMap = buildCompetitionRankMap(base);
+
+    const computed = base.map(r => {
+      const pos = Number(r.position || 0);
+      const rc = Number(r.rebuyCount || 0);
+
+      let winnings = Number(r.winnings || 0);
+      const manual = Boolean(r.winningsIsManual);
+      if (!manual){
+        winnings = winningsFromPayouts(pot, percents, pos);
+      }
+
+      const cost = stakeValue * (1 + rc);
+      const profit = winnings - cost;
+
+      const rank = rankMap.get(pos) ?? pos;
+      const points = pointsFromRank(rank, totalPlayers);
+
+      return { ...r, winnings, cost, profit, points, rank };
+    });
+
+    return { stakeValue, pot, totalPlayers, computed, percents };
+  }
+
+  function renderDraft(){
+    const base = Array.from(draft.values());
+    draftInfo.textContent = base.length ? `${base.length} résultat(s) ajouté(s)` : "Aucun résultat";
+
+    if (!base.length){
+      draftTable.innerHTML = `<div class="empty">Ajoute les résultats (places peuvent être identiques en cas d'égalité).</div>`;
+      potInfo.textContent = "";
+      return;
+    }
+
+    const { stakeValue, pot, totalPlayers, computed } = computeDraftComputed();
+
+    const totalCost = sum(computed.map(r => Number(r.cost || 0)));
+    const totalWin = sum(computed.map(r => Number(r.winnings || 0)));
+    const totalProfit = sum(computed.map(r => Number(r.profit || 0)));
+
+    potInfo.innerHTML = `
+      <span class="hint">
+        Stake <b>${euro(stakeValue)}</b> • Joueurs <b>${totalPlayers}</b> • Recaves <b>${sum(computed.map(r=>Number(r.rebuyCount||0)))}</b> • Pot <b>${euro(pot)}</b>
+        • Gains <b>${euro(totalWin)}</b> • Mises <b>${euro(totalCost)}</b> • Somme profits <b class="${totalProfit>=0?"pos":"neg"}">${euro(totalProfit)}</b>
+      </span>
+    `;
+
+    const rows = computed
+      .slice()
+      .sort((a,b)=> Number(a.position||999) - Number(b.position||999))
+      .map(r => {
+        const name = playerById(r.playerId)?.name ?? "Inconnu";
+        const profit = Number(r.profit||0);
+        return `
+          <tr>
+            <td class="num">${Number(r.position||0)}</td>
+            <td title="${escapeHtml(name)}">${escapeHtml(name)}</td>
+            <td class="num">${Number(r.rebuyCount||0)}</td>
+            <td class="num">${euro(Number(r.winnings||0))}${r.winningsIsManual ? " *" : ""}</td>
+            <td class="num">${euro(Number(r.cost||0))}</td>
+            <td class="num ${profit>=0?"pos":"neg"}">${euro(profit)}</td>
+            <td class="num">${Number(r.points||0)}</td>
+            <td class="num"><button class="danger" data-deldraft="${r.playerId}" style="padding:6px 10px">Retirer</button></td>
+          </tr>
+        `;
+      }).join("");
+
+    draftTable.innerHTML = `
+      <table>
+        <thead>
+          <tr>
+            <th class="num">Place</th>
+            <th>Joueur</th>
+            <th class="num">Recaves</th>
+            <th class="num">Gain</th>
+            <th class="num">Mise</th>
+            <th class="num">Profit</th>
+            <th class="num">Pts</th>
+            <th class="num">Action</th>
+          </tr>
+        </thead>
+        <tbody>${rows}</tbody>
+      </table>
+      <div class="hint">* = gain saisi à la main. PDF exporte tous les tournois (dernier à la fin).</div>
+    `;
+
+    draftTable.querySelectorAll("button[data-deldraft]").forEach(btn => {
+      btn.addEventListener("click", () => {
+        const id = btn.getAttribute("data-deldraft");
+        draft.delete(id);
+        renderDraft();
+      });
+    });
+  }
+
+  function computeTournamentComputed(t){
+    const stakeValue = Number(t.stake || 0);
+    const percents = Array.isArray(t.payoutPercents) ? t.payoutPercents.map(Number).filter(Number.isFinite) : [];
+    const base = (t.results || []).map(r => ({
+      playerId: r.playerId,
+      rebuyCount: Number(r.rebuyCount || 0),
+      position: Number(r.position || 0),
+      winnings: Number(r.winnings || 0),
+      winningsIsManual: Boolean(r.winningsIsManual)
+    }));
+
+    const pot = computePot(stakeValue, base);
+    const totalPlayers = base.length;
+    const rankMap = buildCompetitionRankMap(base);
+
+    const computed = base.map(r => {
+      let winnings = r.winnings;
+      if (!r.winningsIsManual){
+        winnings = winningsFromPayouts(pot, percents, r.position);
+      }
+      const cost = stakeValue * (1 + r.rebuyCount);
+      const profit = winnings - cost;
+
+      const rank = rankMap.get(r.position) ?? r.position;
+      const points = pointsFromRank(rank, totalPlayers);
+
+      return { ...r, winnings, cost, profit, points, rank };
+    });
+
+    return { stakeValue, percents, pot, totalPlayers, computed };
+  }
+
+  function computeGlobalLeaderboard(){
+    const map = new Map();
+    state.players.forEach(p => {
+      map.set(p.id, { playerId:p.id, name:p.name, tournaments:0, totalProfit:0, totalPoints:0 });
+    });
+
+    for (const t of state.tournaments){
+      const { computed } = computeTournamentComputed(t);
+      for (const r of computed){
+        if (!map.has(r.playerId)) continue;
+        const s = map.get(r.playerId);
+        s.tournaments += 1;
+        s.totalProfit += Number(r.profit || 0);
+        s.totalPoints += Number(r.points || 0);
+      }
+    }
+
+    return Array.from(map.values()).sort((a,b)=> b.totalProfit - a.totalProfit);
+  }
+
+  // ── Stats : calculs ──────────────────────────────────────────
+  function computePlayerHistory(playerId){
+    const rows = [];
+    for (const t of state.tournaments){
+      const { computed } = computeTournamentComputed(t);
+      const r = computed.find(x => x.playerId === playerId);
+      if (r) rows.push({ date: t.date || "", ...r });
+    }
+    rows.sort((a,b) => (a.date||"").localeCompare(b.date||""));
+    return rows;
+  }
+
+  function computePlayerAggregate(playerId){
+    const player = playerById(playerId);
+    if (!player) return null;
+    const rows = computePlayerHistory(playerId);
+    if (!rows.length){
+      return { playerId, name: player.name, rows: [], tournaments: 0 };
+    }
+
+    const totalPoints = sum(rows.map(r => r.points));
+    const totalProfit = sum(rows.map(r => r.profit));
+    const totalCost = sum(rows.map(r => r.cost));
+    const wins = rows.filter(r => r.rank === 1).length;
+    const podiums = rows.filter(r => r.rank <= 3).length;
+    const avgPoints = totalPoints / rows.length;
+    const avgRank = sum(rows.map(r => r.rank)) / rows.length;
+    const roi = totalCost > 0 ? (totalProfit / totalCost) * 100 : 0;
+    const bestPosition = Math.min(...rows.map(r => r.position));
+
+    let best = rows[0], worst = rows[0];
+    rows.forEach(r => {
+      if (r.profit > best.profit) best = r;
+      if (r.profit < worst.profit) worst = r;
+    });
+
+    // série actuelle (en partant du tournoi le plus récent)
+    let streak = 0, streakType = "neutral";
+    for (let i = rows.length - 1; i >= 0; i--){
+      const sign = rows[i].profit > 0 ? "win" : (rows[i].profit < 0 ? "loss" : "neutral");
+      if (i === rows.length - 1){ streakType = sign; streak = sign === "neutral" ? 0 : 1; if (sign==="neutral") break; }
+      else if (sign === streakType) streak++;
+      else break;
+    }
+
+    return {
+      playerId, name: player.name, rows, tournaments: rows.length,
+      totalPoints, avgPoints, totalProfit, totalCost, roi, avgRank,
+      wins, podiums, bestPosition, best, worst, streak, streakType
+    };
+  }
+
+  function computeAllAggregates(){
+    return state.players.map(p => computePlayerAggregate(p.id)).filter(a => a && a.tournaments > 0);
+  }
+
+  // ── Stats : mini graphiques SVG ──────────────────────────────
+  function svgMultiLineChart(seriesList, { width = 560, height = 150, pad = 24, zeroLine = false, dots = true } = {}){
+    const usable = seriesList.filter(s => s.values && s.values.length);
+    if (!usable.length) return "";
+
+    const n = Math.max(...usable.map(s => s.values.length));
+    const allValues = usable.flatMap(s => s.values);
+    const min = Math.min(...allValues, zeroLine ? 0 : Infinity);
+    const max = Math.max(...allValues, zeroLine ? 0 : -Infinity);
+    const span = (max - min) || 1;
+
+    const stepX = n > 1 ? (width - pad * 2) / (n - 1) : 0;
+    const yFor = v => height - pad - ((v - min) / span) * (height - pad * 2);
+    const xFor = i => pad + i * stepX;
+
+    let zeroLineSvg = "";
+    if (zeroLine && min < 0 && max > 0){
+      const y0 = yFor(0).toFixed(1);
+      zeroLineSvg = `<line x1="${pad}" y1="${y0}" x2="${width-pad}" y2="${y0}" stroke="rgba(255,255,255,.18)" stroke-dasharray="4 4"/>`;
+    }
+
+    const parts = usable.map(s => {
+      const vals = s.values.length === 1 ? [s.values[0], s.values[0]] : s.values;
+      const pts = vals.map((v, i) => `${xFor(i).toFixed(1)},${yFor(v).toFixed(1)}`).join(" ");
+      const dotSvg = dots ? vals.map((v, i) =>
+        `<circle cx="${xFor(i).toFixed(1)}" cy="${yFor(v).toFixed(1)}" r="3" fill="${s.color}"><title>${s.label || ""}: ${v}</title></circle>`
+      ).join("") : "";
+      return `<polyline points="${pts}" fill="none" stroke="${s.color}" stroke-width="2.5" stroke-linejoin="round" stroke-linecap="round"/>${dotSvg}`;
+    }).join("");
+
+    return `
+      <svg class="chartSvg" viewBox="0 0 ${width} ${height}" xmlns="http://www.w3.org/2000/svg">
+        ${zeroLineSvg}
+        ${parts}
+      </svg>
+    `;
+  }
+
+  function svgLineChart(values, opts = {}){
+    return svgMultiLineChart([{ values, color: opts.color || "var(--acc)", label: opts.label }], opts);
+  }
+
+  // ── Sous-vue: Joueur ──────────────────────────────────────────
+  function renderStats(){
+    const players = [...state.players].sort((a,b) => a.name.localeCompare(b.name, "fr"));
+
+    const prevSelected = statsPlayerSelect.value;
+    statsPlayerSelect.innerHTML = "";
+
+    if (!players.length){
+      statsHint.textContent = "";
+      statsSummary.innerHTML = `<div class="empty">Ajoute des joueurs et des tournois pour voir des stats.</div>`;
+      statsChartWrap.innerHTML = "";
+      statsChartHint.textContent = "";
+      statsHistory.innerHTML = "";
+      return;
+    }
+
+    players.forEach(p => {
+      const opt = document.createElement("option");
+      opt.value = p.id;
+      opt.textContent = p.name;
+      statsPlayerSelect.appendChild(opt);
+    });
+
+    const stillExists = players.some(p => p.id === prevSelected);
+    statsPlayerSelect.value = stillExists ? prevSelected : players[0].id;
+
+    renderStatsForPlayer(statsPlayerSelect.value);
+  }
+
+  function streakLabel(agg){
+    if (!agg.streak) return "—";
+    const word = agg.streakType === "win" ? "gagnant(s)" : "perdant(s)";
+    const emoji = agg.streakType === "win" ? "🔥" : "🥶";
+    return `${agg.streak} tournoi(s) ${word} ${emoji}`;
+  }
+
+  function renderStatsForPlayer(playerId){
+    const agg = computePlayerAggregate(playerId);
+    if (!agg){
+      statsSummary.innerHTML = `<div class="empty">Sélectionne un joueur.</div>`;
+      statsChartWrap.innerHTML = "";
+      statsHistory.innerHTML = "";
+      return;
+    }
+
+    statsHint.textContent = `${agg.tournaments} tournoi(s) joué(s)`;
+
+    if (!agg.tournaments){
+      statsSummary.innerHTML = `<div class="empty">${escapeHtml(agg.name)} n'a encore joué aucun tournoi.</div>`;
+      statsChartWrap.innerHTML = "";
+      statsChartHint.textContent = "";
+      statsHistory.innerHTML = "";
+      return;
+    }
+
+    const rows = agg.rows;
+
+    statsSummary.innerHTML = `
+      <div class="statGrid">
+        <div class="statBox"><div class="lbl">Tournois joués</div><div class="val">${agg.tournaments}</div></div>
+        <div class="statBox"><div class="lbl">Victoires</div><div class="val">${agg.wins}</div></div>
+        <div class="statBox"><div class="lbl">Podiums (top 3)</div><div class="val">${agg.podiums}</div></div>
+        <div class="statBox"><div class="lbl">Meilleure place</div><div class="val">${agg.bestPosition}${agg.bestPosition===1?" 🏆":""}</div></div>
+        <div class="statBox"><div class="lbl">Rang moyen</div><div class="val">${agg.avgRank.toFixed(1)}</div></div>
+        <div class="statBox"><div class="lbl">Points totaux</div><div class="val">${agg.totalPoints}</div></div>
+        <div class="statBox"><div class="lbl">Moyenne points / tournoi</div><div class="val">${agg.avgPoints.toFixed(1)}</div></div>
+        <div class="statBox"><div class="lbl">Profit total</div><div class="val ${agg.totalProfit>=0?"pos":"neg"}">${euro(agg.totalProfit)}</div></div>
+        <div class="statBox"><div class="lbl">Total misé</div><div class="val">${euro(agg.totalCost)}</div></div>
+        <div class="statBox"><div class="lbl">ROI</div><div class="val ${agg.roi>=0?"pos":"neg"}">${agg.roi.toFixed(0)}%</div></div>
+        <div class="statBox"><div class="lbl">Série actuelle</div><div class="val" style="font-size:13px">${streakLabel(agg)}</div></div>
+      </div>
+      <div class="statGrid" style="margin-top:2px">
+        <div class="statBox">
+          <div class="lbl">🥇 Meilleur tournoi</div>
+          <div class="val pos" style="font-size:15px">${euro(agg.best.profit)}</div>
+          <div class="sub" style="font-size:11px;color:var(--muted)">${escapeHtml(agg.best.date || "Sans date")}</div>
+        </div>
+        <div class="statBox">
+          <div class="lbl">💀 Pire tournoi</div>
+          <div class="val neg" style="font-size:15px">${euro(agg.worst.profit)}</div>
+          <div class="sub" style="font-size:11px;color:var(--muted)">${escapeHtml(agg.worst.date || "Sans date")}</div>
+        </div>
+      </div>
+    `;
+
+    let cum = 0;
+    const cumProfits = rows.map(r => (cum += r.profit));
+    const pointsSeries = rows.map(r => r.points);
+
+    statsChartHint.textContent = "Profit cumulé (haut) • Points par tournoi (bas)";
+    statsChartWrap.innerHTML = `
+      ${svgLineChart(cumProfits, { color: agg.totalProfit >= 0 ? "var(--acc)" : "var(--bad)", zeroLine: true, height: 120 })}
+      <div style="height:8px"></div>
+      ${svgLineChart(pointsSeries, { color: "#f0b429", height: 90 })}
+    `;
+
+    statsHistory.innerHTML = `
+      <table>
+        <thead>
+          <tr><th>Date</th><th class="num">Place</th><th class="num">Recaves</th><th class="num">Gain</th><th class="num">Profit</th><th class="num">Points</th></tr>
+        </thead>
+        <tbody>
+          ${rows.slice().reverse().map(r => `
+            <tr>
+              <td>${escapeHtml(r.date || "Sans date")}</td>
+              <td class="num">${r.position}</td>
+              <td class="num">${r.rebuyCount}</td>
+              <td class="num">${euro(r.winnings)}</td>
+              <td class="num ${r.profit>=0?"pos":"neg"}">${euro(r.profit)}</td>
+              <td class="num">${r.points}</td>
+            </tr>
+          `).join("")}
+        </tbody>
+      </table>
+    `;
+  }
+
+  statsPlayerSelect.addEventListener("change", () => renderStatsForPlayer(statsPlayerSelect.value));
+
+  // ── Sous-vue: Vue d'ensemble ──────────────────────────────────
+  function miniBoardHtml(title, items, formatFn){
+    if (!items.length) return `<div class="miniBoard"><h3>${title}</h3><div class="sub">Pas assez de données.</div></div>`;
+    return `
+      <div class="miniBoard">
+        <h3>${title}</h3>
+        <ol>
+          ${items.map(it => `<li>${formatFn(it)}</li>`).join("")}
+        </ol>
+      </div>
+    `;
+  }
+
+  function renderOverview(){
+    const aggs = computeAllAggregates();
+    overviewHint.textContent = `${state.players.length} joueur(s) • ${state.tournaments.length} tournoi(s)`;
+
+    if (!aggs.length){
+      overviewContent.innerHTML = `<div class="empty">Pas encore de tournoi enregistré.</div>`;
+      return;
+    }
+
+    const totalPot = sum(state.tournaments.map(t => computeTournamentComputed(t).pot));
+    const totalRebuys = sum(state.tournaments.map(t => sum((t.results||[]).map(r => Number(r.rebuyCount||0)))));
+
+    const byWins = [...aggs].sort((a,b) => b.wins - a.wins || b.totalProfit - a.totalProfit).slice(0,3);
+    const eligible = aggs.filter(a => a.tournaments >= 2);
+    const byRoi = [...eligible].sort((a,b) => b.roi - a.roi).slice(0,3);
+    const byRegularity = [...eligible].sort((a,b) => a.avgRank - b.avgRank).slice(0,3);
+    const byTournaments = [...aggs].sort((a,b) => b.tournaments - a.tournaments).slice(0,3);
+
+    const allRows = aggs.flatMap(a => a.rows.map(r => ({ ...r, name: a.name })));
+    const byBestSingle = [...allRows].sort((a,b) => b.profit - a.profit).slice(0,3);
+    const byWorstSingle = [...allRows].sort((a,b) => a.profit - b.profit).slice(0,3);
+
+    overviewContent.innerHTML = `
+      <div class="statGrid" style="margin-bottom:12px">
+        <div class="statBox"><div class="lbl">Tournois enregistrés</div><div class="val">${state.tournaments.length}</div></div>
+        <div class="statBox"><div class="lbl">Joueurs actifs</div><div class="val">${aggs.length}</div></div>
+        <div class="statBox"><div class="lbl">Cagnotte totale distribuée</div><div class="val">${euro(totalPot)}</div></div>
+        <div class="statBox"><div class="lbl">Recaves totales</div><div class="val">${totalRebuys}</div></div>
+      </div>
+
+      <div class="overviewGrid">
+        ${miniBoardHtml("🏆 Plus de victoires", byWins, a => `<b>${escapeHtml(a.name)}</b> — ${a.wins} victoire(s) <span class="sub">(${a.tournaments} tournois)</span>`)}
+        ${miniBoardHtml("💰 Meilleur ROI (2+ tournois)", byRoi, a => `<b>${escapeHtml(a.name)}</b> — ${a.roi.toFixed(0)}% <span class="sub">(${a.tournaments} tournois)</span>`)}
+        ${miniBoardHtml("🎯 Plus régulier (2+ tournois)", byRegularity, a => `<b>${escapeHtml(a.name)}</b> — rang moyen ${a.avgRank.toFixed(1)} <span class="sub">(${a.tournaments} tournois)</span>`)}
+        ${miniBoardHtml("🎲 Le plus assidu", byTournaments, a => `<b>${escapeHtml(a.name)}</b> — ${a.tournaments} tournoi(s)`)}
+        ${miniBoardHtml("📈 Plus gros gain (un tournoi)", byBestSingle, r => `<b>${escapeHtml(r.name)}</b> — ${euro(r.profit)} <span class="sub">(${escapeHtml(r.date||"Sans date")})</span>`)}
+        ${miniBoardHtml("📉 Plus grosse perte (un tournoi)", byWorstSingle, r => `<b>${escapeHtml(r.name)}</b> — ${euro(r.profit)} <span class="sub">(${escapeHtml(r.date||"Sans date")})</span>`)}
+      </div>
+    `;
+  }
+
+  // ── Sous-vue: Comparaison ─────────────────────────────────────
+  function fillCompareSelects(){
+    const players = [...state.players].sort((a,b) => a.name.localeCompare(b.name, "fr"));
+    const prevA = compareSelectA.value, prevB = compareSelectB.value;
+    compareSelectA.innerHTML = "";
+    compareSelectB.innerHTML = "";
+    players.forEach(p => {
+      const optA = document.createElement("option"); optA.value = p.id; optA.textContent = p.name;
+      const optB = document.createElement("option"); optB.value = p.id; optB.textContent = p.name;
+      compareSelectA.appendChild(optA);
+      compareSelectB.appendChild(optB);
+    });
+    if (!players.length) return false;
+    compareSelectA.value = players.some(p=>p.id===prevA) ? prevA : players[0].id;
+    const secondDefault = players[1] ? players[1].id : players[0].id;
+    compareSelectB.value = players.some(p=>p.id===prevB) ? prevB : secondDefault;
+    return true;
+  }
+
+  function computeCumulativeSeriesAligned(playerIdA, playerIdB){
+    const rowsA = computePlayerHistory(playerIdA);
+    const rowsB = computePlayerHistory(playerIdB);
+    const dates = [...new Set([...rowsA.map(r=>r.date), ...rowsB.map(r=>r.date)])].sort((a,b)=>(a||"").localeCompare(b||""));
+
+    function seriesFor(rows){
+      const byDate = new Map();
+      let cum = 0;
+      for (const r of rows){ cum += r.profit; byDate.set(r.date, cum); }
+      let last = 0;
+      return dates.map(d => { if (byDate.has(d)) last = byDate.get(d); return last; });
+    }
+    return { dates, a: seriesFor(rowsA), b: seriesFor(rowsB) };
+  }
+
+  function compareRow(label, valA, valB, aBetter){
+    const aWin = aBetter === "a", bWin = aBetter === "b";
+    return `
+      <tr>
+        <td class="metric">${label}</td>
+        <td class="val ${aWin?"win":""}">${valA}</td>
+        <td class="val ${bWin?"win":""}">${valB}</td>
+      </tr>
+    `;
+  }
+
+  function renderCompare(){
+    const ok = fillCompareSelects();
+    if (!ok){
+      compareContent.innerHTML = `<div class="empty">Ajoute au moins un joueur pour comparer.</div>`;
+      return;
+    }
+    renderCompareForSelection();
+  }
+
+  function renderCompareForSelection(){
+    const idA = compareSelectA.value, idB = compareSelectB.value;
+    const aggA = computePlayerAggregate(idA);
+    const aggB = computePlayerAggregate(idB);
+
+    if (!aggA || !aggB || (!aggA.tournaments && !aggB.tournaments)){
+      compareContent.innerHTML = `<div class="empty">Pas encore de tournois pour ces joueurs.</div>`;
+      return;
+    }
+
+    const colorA = "var(--acc)", colorB = "#f0b429";
+    const { dates, a: seriesA, b: seriesB } = computeCumulativeSeriesAligned(idA, idB);
+
+    const cmp = (va, vb, higherIsBetter = true) => {
+      if (va === vb) return null;
+      if (higherIsBetter) return va > vb ? "a" : "b";
+      return va < vb ? "a" : "b";
+    };
+
+    compareContent.innerHTML = `
+      <div class="compareLegend">
+        <span><span class="dot" style="background:${colorA}"></span>${escapeHtml(aggA.name)}</span>
+        <span><span class="dot" style="background:${colorB}"></span>${escapeHtml(aggB.name)}</span>
+      </div>
+      ${svgMultiLineChart([
+        { values: seriesA, color: colorA, label: aggA.name },
+        { values: seriesB, color: colorB, label: aggB.name }
+      ], { zeroLine: true, height: 150 })}
+
+      <div class="hr"></div>
+
+      <table class="compareTable">
+        <thead><tr><th>Métrique</th><th style="text-align:center">${escapeHtml(aggA.name)}</th><th style="text-align:center">${escapeHtml(aggB.name)}</th></tr></thead>
+        <tbody>
+          ${compareRow("Tournois joués", aggA.tournaments, aggB.tournaments, cmp(aggA.tournaments, aggB.tournaments))}
+          ${compareRow("Victoires", aggA.tournaments?aggA.wins:"—", aggB.tournaments?aggB.wins:"—", (aggA.tournaments&&aggB.tournaments)?cmp(aggA.wins, aggB.wins):null)}
+          ${compareRow("Podiums", aggA.tournaments?aggA.podiums:"—", aggB.tournaments?aggB.podiums:"—", (aggA.tournaments&&aggB.tournaments)?cmp(aggA.podiums, aggB.podiums):null)}
+          ${compareRow("Points totaux", aggA.tournaments?aggA.totalPoints:"—", aggB.tournaments?aggB.totalPoints:"—", (aggA.tournaments&&aggB.tournaments)?cmp(aggA.totalPoints, aggB.totalPoints):null)}
+          ${compareRow("Rang moyen", aggA.tournaments?aggA.avgRank.toFixed(1):"—", aggB.tournaments?aggB.avgRank.toFixed(1):"—", (aggA.tournaments&&aggB.tournaments)?cmp(aggA.avgRank, aggB.avgRank, false):null)}
+          ${compareRow("Profit total", aggA.tournaments?euro(aggA.totalProfit):"—", aggB.tournaments?euro(aggB.totalProfit):"—", (aggA.tournaments&&aggB.tournaments)?cmp(aggA.totalProfit, aggB.totalProfit):null)}
+          ${compareRow("ROI", aggA.tournaments?aggA.roi.toFixed(0)+"%":"—", aggB.tournaments?aggB.roi.toFixed(0)+"%":"—", (aggA.tournaments&&aggB.tournaments)?cmp(aggA.roi, aggB.roi):null)}
+        </tbody>
+      </table>
+    `;
+  }
+
+  compareSelectA.addEventListener("change", renderCompareForSelection);
+  compareSelectB.addEventListener("change", renderCompareForSelection);
+
+  function renderActiveStatsSubView(){
+    if (statsViewOverview.classList.contains("active")) renderOverview();
+    else if (statsViewCompare.classList.contains("active")) renderCompare();
+    else renderStats();
+  }
+
+
+  let globalSortMode = "profit";
+
+  function renderGlobalLeaderboard(){
+    const leaders = computeGlobalLeaderboard();
+    const sorted = globalSortMode === "points"
+      ? [...leaders].sort((a,b) => b.totalPoints - a.totalPoints || b.totalProfit - a.totalProfit)
+      : [...leaders].sort((a,b) => b.totalProfit - a.totalProfit);
+
+    globalInfo.textContent = `${sorted.length} joueur(s) • tri ${globalSortMode === "points" ? "points" : "profit"}`;
+    globalTable.innerHTML = sorted.length ? `
+      <table>
+        <thead>
+          <tr>
+            <th>#</th>
+            <th>Joueur</th>
+            <th class="num">Profit</th>
+            <th class="num">Points</th>
+            <th class="num">Tournois</th>
+          </tr>
+        </thead>
+        <tbody>
+          ${sorted.slice(0, 14).map((x,i)=>`
+            <tr>
+              <td>${i+1}</td>
+              <td title="${escapeHtml(x.name)}">${escapeHtml(x.name)}</td>
+              <td class="num ${x.totalProfit>=0?"pos":"neg"}">${euro(x.totalProfit)}</td>
+              <td class="num">${x.totalPoints}</td>
+              <td class="num">${x.tournaments}</td>
+            </tr>
+          `).join("")}
+        </tbody>
+      </table>
+    ` : `<div class="empty">Pas de données.</div>`;
+  }
+
+  function setGlobalSortMode(mode){
+    globalSortMode = mode;
+    globalSortProfit.classList.toggle("primary", mode === "profit");
+    globalSortProfit.classList.toggle("ghost", mode !== "profit");
+    globalSortPoints.classList.toggle("primary", mode === "points");
+    globalSortPoints.classList.toggle("ghost", mode !== "points");
+    renderGlobalLeaderboard();
+  }
+
+  globalSortProfit.addEventListener("click", () => setGlobalSortMode("profit"));
+  globalSortPoints.addEventListener("click", () => setGlobalSortMode("points"));
+
+  function renderResultats(){
+    const sortedDesc = [...state.tournaments].sort((a,b)=> (b.date||"").localeCompare(a.date||""));
+
+    tournamentSelect.innerHTML = "";
+    if (!sortedDesc.length){
+      tournamentSelect.innerHTML = `<option value="">Aucun tournoi</option>`;
+      pdfBtn.disabled = true;
+      editTournamentBtn.disabled = true;
+      deleteTournamentBtn.disabled = true;
+
+      globalInfo.textContent = "";
+      tournoiInfo.textContent = "";
+      globalTable.innerHTML = `<div class="empty">Aucun tournoi enregistré.</div>`;
+      tournoiTable.innerHTML = `<div class="empty">Aucun tournoi à afficher.</div>`;
+      return;
+    }
+
+    sortedDesc.forEach((t, idx) => {
+      const opt = document.createElement("option");
+      opt.value = t.id;
+      opt.textContent = `${t.date || "Sans date"} — stake ${euro(Number(t.stake||0))} — ${(t.results||[]).length} joueurs`;
+      if (idx === 0) opt.selected = true;
+      tournamentSelect.appendChild(opt);
+    });
+
+    pdfBtn.disabled = false;
+    editTournamentBtn.disabled = false;
+    deleteTournamentBtn.disabled = false;
+
+    renderGlobalLeaderboard();
+
+    renderTournamentDetail(tournamentSelect.value);
+
+    tournamentSelect.onchange = () => renderTournamentDetail(tournamentSelect.value);
+    pdfBtn.onclick = () => exportPDFAll(); // ✅ export all tournaments
+
+    editTournamentBtn.onclick = () => {
+      const tid = tournamentSelect.value;
+      const t = state.tournaments.find(x => x.id === tid);
+      if (!t) return;
+      enterEditMode(t);
+    };
+
+    deleteTournamentBtn.onclick = () => {
+      if (!requireAuth()) return;
+      const tid = tournamentSelect.value;
+      const t = state.tournaments.find(x => x.id === tid);
+      if (!t) return;
+      if (!confirm(`Supprimer le tournoi du ${t.date || "Sans date"} ?`)) return;
+      trashPush({ kind: "tournament", tournament: t });
+      state.tournaments = state.tournaments.filter(x => x.id !== tid);
+      logAction(`Tournoi du ${t.date || "Sans date"} supprimé (déplacé en corbeille)`);
+      if (editingTournamentId === tid) exitEditMode();
+      save();
+      renderAll();
+    };
+  }
+
+  function renderTournamentDetail(tournamentId){
+    const t = state.tournaments.find(x => x.id === tournamentId) || state.tournaments[0];
+    if (!t){
+      tournoiInfo.textContent = "";
+      tournoiTable.innerHTML = `<div class="empty">Aucun tournoi.</div>`;
+      return;
+    }
+
+    const { stakeValue, pot, totalPlayers, computed } = computeTournamentComputed(t);
+
+    tournoiInfo.textContent =
+      `${t.date || "Sans date"} • stake ${euro(stakeValue)} • pot ${euro(pot)} • recave ${Number(t.rebuyMinutes||0)} min • ${totalPlayers} joueurs`;
+
+    const rows = computed
+      .slice()
+      .sort((a,b)=> Number(a.position||999) - Number(b.position||999))
+      .map(r=>{
+        const name = playerById(r.playerId)?.name ?? "Inconnu";
+        const profit = Number(r.profit||0);
+        return `
+          <tr>
+            <td class="num">${Number(r.position||0)}</td>
+            <td title="${escapeHtml(name)}">${escapeHtml(name)}</td>
+            <td class="num">${Number(r.rebuyCount||0)}</td>
+            <td class="num">${euro(Number(r.winnings||0))}${r.winningsIsManual ? " *" : ""}</td>
+            <td class="num">${euro(Number(r.cost||0))}</td>
+            <td class="num ${profit>=0?"pos":"neg"}">${euro(profit)}</td>
+            <td class="num">${Number(r.points||0)}</td>
+          </tr>
+        `;
+      }).join("");
+
+    tournoiTable.innerHTML = computed.length ? `
+      <table>
+        <thead>
+          <tr>
+            <th class="num">Place</th>
+            <th>Joueur</th>
+            <th class="num">Recaves</th>
+            <th class="num">Gain</th>
+            <th class="num">Mise</th>
+            <th class="num">Profit</th>
+            <th class="num">Pts</th>
+          </tr>
+        </thead>
+        <tbody>${rows}</tbody>
+      </table>
+    ` : `<div class="empty">Pas de résultats pour ce tournoi.</div>`;
+  }
+
+  // Events
+  addPlayerBtn.addEventListener("click", () => {
+    if (!requireAuth()) return;
+    const name = (playerName.value || "").trim();
+    if (!name) return;
+    if (state.players.some(p => p.name.toLowerCase() === name.toLowerCase())){
+      alert("Ce joueur existe déjà.");
+      return;
+    }
+    state.players.push({ id: uid(), name });
+    playerName.value = "";
+    logAction(`Joueur "${name}" ajouté`);
+    save();
+    renderAll();
+  });
+
+  playerName.addEventListener("keydown", (e) => {
+    if (e.key === "Enter") addPlayerBtn.click();
+  });
+
+  addResultBtn.addEventListener("click", () => {
+    const pid = playerSelect.value;
+    if (!pid) return;
+
+    const stakeValue = Number(stake.value || 5);
+    const rc = Number(rebuyCount.value || 0);
+    const pos = Number(position.value || 0);
+
+    if (!Number.isFinite(stakeValue) || stakeValue < 0) return alert("Stake invalide.");
+    if (!Number.isFinite(rc) || rc < 0) return alert("Recaves invalides.");
+    if (!Number.isFinite(pos) || pos < 1) return alert("Place invalide (>=1).");
+
+    const overrideStr = (winningsOverride.value || "").trim();
+    let winnings = 0;
+    let winningsIsManual = false;
+
+    if (overrideStr !== ""){
+      const w = Number(overrideStr);
+      if (!Number.isFinite(w) || w < 0) return alert("Gain € invalide.");
+      winnings = w;
+      winningsIsManual = true;
+    } else {
+      winnings = 0;
+      winningsIsManual = false;
+    }
+
+    draft.set(pid, { playerId: pid, rebuyCount: rc, position: pos, winnings, winningsIsManual });
+
+    playerSelect.value = "";
+    rebuyCount.value = "";
+    position.value = "";
+    winningsOverride.value = "";
+
+    renderDraft();
+  });
+
+  clearDraftBtn.addEventListener("click", () => {
+    draft = new Map();
+    renderDraft();
+  });
+
+  saveTournamentBtn.addEventListener("click", () => {
+    if (!requireAuth()) return;
+    const base = Array.from(draft.values());
+    if (!base.length) return alert("Ajoute au moins un résultat joueur.");
+
+    const { computed } = computeDraftComputed();
+
+    const resultsToStore = computed.map(r => ({
+      playerId: r.playerId,
+      rebuyCount: Number(r.rebuyCount || 0),
+      position: Number(r.position || 0),
+      winnings: Number(r.winnings || 0),
+      winningsIsManual: Boolean(r.winningsIsManual)
+    }));
+
+    const tournamentObj = {
+      id: editingTournamentId ?? uid(),
+      date: (tDate.value || "").trim() || new Date().toISOString().slice(0,10),
+      stake: Number(stake.value || 5),
+      rebuyMinutes: Number(rebuyMinutes.value || 60),
+      payoutPercents: parsePercents(payouts.value),
+      results: resultsToStore
+    };
+
+    const wasEditing = isEditing();
+    if (wasEditing){
+      const idx = state.tournaments.findIndex(t => t.id === editingTournamentId);
+      if (idx !== -1) state.tournaments[idx] = tournamentObj;
+      else state.tournaments.push(tournamentObj);
+      exitEditMode();
+    } else {
+      state.tournaments.push(tournamentObj);
+    }
+
+    logAction(`Tournoi du ${tournamentObj.date} ${wasEditing ? "modifié" : "ajouté"} (${resultsToStore.length} joueur(s))`);
+    draft = new Map();
+    save();
+    renderAll();
+  });
+
+  clearHistoryBtn.addEventListener("click", () => {
+    if (!requireAuth()) return;
+    if (!confirm("Supprimer tous les tournois ?")) return;
+    if (state.tournaments.length){
+      trashPush({ kind: "reset_snapshot", players: state.players, tournaments: state.tournaments });
+    }
+    logAction(`Tous les tournois supprimés (${state.tournaments.length}) — sauvegarde en corbeille`);
+    state.tournaments = [];
+    if (isEditing()) exitEditMode();
+    save();
+    renderAll();
+  });
+
+  resetAllBtn.addEventListener("click", () => {
+    if (!requireAuth()) return;
+    if (!confirm("Reset total (joueurs + tournois) ?")) return;
+    if (state.players.length || state.tournaments.length){
+      trashPush({ kind: "reset_snapshot", players: state.players, tournaments: state.tournaments });
+    }
+    logAction(`Reset total effectué — sauvegarde en corbeille`);
+    state.players = [];
+    state.tournaments = [];
+    draft = new Map();
+    exitEditMode();
+    save();
+    renderAll();
+    setTab("saisie");
+  });
+
+  // ── Authentification (Firebase Auth) ────────────────────────
+  let isAuthed = false;
+  let authEmail = "";
+
+  function updateAuthUI(){
+    if (isAuthed){
+      authBtn.textContent = "🔓 Déconnexion (" + authEmail + ")";
+    } else {
+      authBtn.textContent = "🔐 Se connecter";
+    }
+  }
+
+  function requireAuth(){
+    if (isAuthed) return true;
+    openLoginModal();
+    return false;
+  }
+
+  function openLoginModal(){
+    loginError.textContent = "";
+    loginPassword.value = "";
+    loginModal.classList.add("open");
+    loginEmail.focus();
+  }
+  function closeLoginModal(){
+    loginModal.classList.remove("open");
+  }
+
+  onAuthStateChanged(auth, (user) => {
+    isAuthed = !!user;
+    authEmail = user ? user.email : "";
+    updateAuthUI();
+  });
+
+  authBtn.addEventListener("click", () => {
+    if (isAuthed){
+      if (confirm("Se déconnecter ?")) signOut(auth);
+    } else {
+      openLoginModal();
+    }
+  });
+
+  loginCloseBtn.addEventListener("click", closeLoginModal);
+  loginModal.addEventListener("click", (e) => { if (e.target === loginModal) closeLoginModal(); });
+
+  loginSubmitBtn.addEventListener("click", () => {
+    const email = (loginEmail.value || "").trim();
+    const pwd = loginPassword.value || "";
+    if (!email || !pwd){
+      loginError.textContent = "Renseigne l'email et le mot de passe.";
+      return;
+    }
+    loginError.textContent = "Connexion...";
+    signInWithEmailAndPassword(auth, email, pwd)
+      .then(() => {
+        closeLoginModal();
+      })
+      .catch((err) => {
+        console.error("Erreur de connexion:", err);
+        loginError.textContent = "Identifiants incorrects.";
+      });
+  });
+
+  loginPassword.addEventListener("keydown", (e) => {
+    if (e.key === "Enter") loginSubmitBtn.click();
+  });
+
+  // ── Historique : Corbeille + Journal ────────────────────────
+  function trashDescription(item){
+    if (item.kind === "tournament"){
+      const n = (item.tournament.results || []).length;
+      return `Tournoi du ${escapeHtml(item.tournament.date || "Sans date")} (${n} joueur(s))`;
+    }
+    if (item.kind === "reset_snapshot"){
+      return `Sauvegarde complète (${item.players.length} joueur(s), ${item.tournaments.length} tournoi(s))`;
+    }
+    return "Élément supprimé";
+  }
+
+  function renderTrash(){
+    const items = state.trash || [];
+    if (!items.length){
+      trashContent.innerHTML = `<div class="empty">La corbeille est vide.</div>`;
+      return;
+    }
+    trashContent.innerHTML = `
+      <div class="historyList">
+        ${items.map(item => `
+          <div class="trashItem">
+            <div>
+              <div>${trashDescription(item)}</div>
+              <div class="trashMeta">Supprimé par ${escapeHtml(item.deletedBy || "?")} • ${fmtDateTime(item.deletedAt)}</div>
+            </div>
+            <div class="trashActions">
+              <button class="primary" data-restore="${item.id}">Restaurer</button>
+              <button class="danger" data-purge="${item.id}">Suppr. déf.</button>
+            </div>
+          </div>
+        `).join("")}
+      </div>
+    `;
+    trashContent.querySelectorAll("button[data-restore]").forEach(btn => {
+      btn.addEventListener("click", () => restoreTrashItem(btn.getAttribute("data-restore")));
+    });
+    trashContent.querySelectorAll("button[data-purge]").forEach(btn => {
+      btn.addEventListener("click", () => purgeTrashItem(btn.getAttribute("data-purge")));
+    });
+  }
+
+  function restoreTrashItem(id){
+    if (!requireAuth()) return;
+    const item = (state.trash || []).find(x => x.id === id);
+    if (!item) return;
+
+    if (item.kind === "tournament"){
+      state.tournaments = state.tournaments.filter(t => t.id !== item.tournament.id);
+      state.tournaments.push(item.tournament);
+      logAction(`Tournoi du ${item.tournament.date || "Sans date"} restauré depuis la corbeille`);
+    } else if (item.kind === "reset_snapshot"){
+      if (!confirm("Restaurer va remplacer les joueurs et tournois actuels par cette sauvegarde. Continuer ?")) return;
+      state.players = item.players;
+      state.tournaments = item.tournaments;
+      logAction("Sauvegarde complète restaurée depuis la corbeille");
+    }
+
+    state.trash = (state.trash || []).filter(x => x.id !== id);
+    draft = new Map();
+    exitEditMode();
+    save();
+    renderAll();
+    renderTrash();
+  }
+
+  function purgeTrashItem(id){
+    if (!requireAuth()) return;
+    if (!confirm("Supprimer définitivement cet élément de la corbeille ? Cette action est irréversible.")) return;
+    state.trash = (state.trash || []).filter(x => x.id !== id);
+    logAction("Élément de la corbeille supprimé définitivement");
+    save();
+    renderTrash();
+  }
+
+  function renderLog(){
+    const entries = state.log || [];
+    if (!entries.length){
+      logContent.innerHTML = `<div class="empty">Aucune action enregistrée pour l'instant.</div>`;
+      return;
+    }
+    logContent.innerHTML = `
+      <div class="historyList">
+        ${entries.map(e => `
+          <div class="logItem">
+            <div>${escapeHtml(e.action)}</div>
+            <div class="logMeta">${escapeHtml(e.name)} • ${fmtDateTime(e.ts)}</div>
+          </div>
+        `).join("")}
+      </div>
+    `;
+  }
+
+  function setHistorySubTab(which){
+    const trash = which === "trash";
+    trashContent.style.display = trash ? "block" : "none";
+    logContent.style.display = trash ? "none" : "block";
+    historySubTrash.classList.toggle("primary", trash);
+    historySubTrash.classList.toggle("ghost", !trash);
+    historySubLog.classList.toggle("primary", !trash);
+    historySubLog.classList.toggle("ghost", trash);
+    if (trash) renderTrash(); else renderLog();
+  }
+
+  historyBtn.addEventListener("click", () => {
+    historyModal.classList.add("open");
+    setHistorySubTab("trash");
+  });
+  historyCloseBtn.addEventListener("click", () => historyModal.classList.remove("open"));
+  historyModal.addEventListener("click", (e) => { if (e.target === historyModal) historyModal.classList.remove("open"); });
+  historySubTrash.addEventListener("click", () => setHistorySubTab("trash"));
+  historySubLog.addEventListener("click", () => setHistorySubTab("log"));
+
+  // ── Modale Aide ──────────────────────────────────────────────
+  helpBtn.addEventListener("click", () => helpModal.classList.add("open"));
+  helpCloseBtn.addEventListener("click", () => helpModal.classList.remove("open"));
+  helpModal.addEventListener("click", (e) => { if (e.target === helpModal) helpModal.classList.remove("open"); });
+  document.addEventListener("keydown", (e) => { if (e.key === "Escape") { helpModal.classList.remove("open"); closeLoginModal(); historyModal.classList.remove("open"); } });
+
+  // ── Export / Import JSON ────────────────────────────────────
+  exportBtn.addEventListener("click", () => {
+    const json = JSON.stringify(state, null, 2);
+    const blob = new Blob([json], { type: "application/json" });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = `poker-backup-${new Date().toISOString().slice(0, 10)}.json`;
+    a.click();
+    URL.revokeObjectURL(url);
+  });
+
+  importBtn.addEventListener("click", () => {
+    if (!requireAuth()) return;
+    importFile.click();
+  });
+
+  importFile.addEventListener("change", (e) => {
+    const file = e.target.files[0];
+    if (!file) return;
+    const reader = new FileReader();
+    reader.onload = (ev) => {
+      try {
+        const data = JSON.parse(ev.target.result);
+        if (!Array.isArray(data.players) || !Array.isArray(data.tournaments)) {
+          throw new Error("Format invalide (players/tournaments manquants).");
+        }
+        if (!confirm(`Importer ${data.players.length} joueur(s) + ${data.tournaments.length} tournoi(s) ? Les données actuelles seront écrasées.`)) return;
+        if (state.players.length || state.tournaments.length){
+          trashPush({ kind: "reset_snapshot", players: state.players, tournaments: state.tournaments });
+        }
+        state.players = data.players;
+        state.tournaments = data.tournaments;
+        logAction(`Import JSON : ${data.players.length} joueur(s), ${data.tournaments.length} tournoi(s) — ancien état en corbeille`);
+        draft = new Map();
+        exitEditMode();
+        save();
+        renderAll();
+        setTab("resultats");
+      } catch (err) {
+        alert("Fichier JSON invalide : " + err.message);
+      }
+      importFile.value = "";
+    };
+    reader.readAsText(file);
+  });
+
+  // ── Import depuis un PDF généré par cette appli ─────────────
+  function parseEuro(str){
+    // "30,00 €" ou "-10,00 €" -> nombre
+    const cleaned = String(str || "").replace(/[€\s]/g, "").replace(",", ".");
+    const n = parseFloat(cleaned);
+    return Number.isFinite(n) ? n : 0;
+  }
+
+  async function extractRowsFromPage(page){
+    const content = await page.getTextContent();
+    const rowMap = new Map(); // roundedY -> items
+    for (const item of content.items){
+      if (!item.str || !item.str.trim()) continue;
+      const y = item.transform[5];
+      let key = null;
+      for (const existingY of rowMap.keys()){
+        if (Math.abs(existingY - y) <= 2){ key = existingY; break; }
+      }
+      if (key === null) key = y;
+      if (!rowMap.has(key)) rowMap.set(key, []);
+      rowMap.get(key).push(item);
+    }
+    const sortedKeys = [...rowMap.keys()].sort((a,b) => b - a); // haut -> bas de page
+    return sortedKeys.map(k =>
+      rowMap.get(k)
+        .sort((a,b) => a.transform[4] - b.transform[4])
+        .map(it => it.str.trim())
+    );
+  }
+
+  async function parsePdfToState(file){
+    const buf = await file.arrayBuffer();
+    const pdf = await pdfjsLib.getDocument({ data: buf }).promise;
+
+    const playerIds = new Map(); // name -> id
+    const tournaments = [];
+    let current = null; // {date, stake, rebuyMinutes, results:[]}
+
+    const getPid = (name) => {
+      if (!playerIds.has(name)) playerIds.set(name, uid());
+      return playerIds.get(name);
+    };
+
+    for (let p = 1; p <= pdf.numPages; p++){
+      const page = await pdf.getPage(p);
+      const rows = await extractRowsFromPage(page);
+
+      for (const row of rows){
+        const line = row.join(" ");
+
+        const mTournoi = line.match(/^Tournoi:\s*(\S+)/);
+        if (mTournoi){
+          if (current) tournaments.push(current);
+          current = { date: mTournoi[1] === "Sansdate" ? "" : mTournoi[1], stake: 5, rebuyMinutes: 60, results: [] };
+          continue;
+        }
+
+        const mStake = line.match(/Stake:\s*([\-\d,.\s]+)\s*€.*Recave:\s*(\d+)\s*min/);
+        if (mStake && current){
+          current.stake = parseEuro(mStake[1]);
+          current.rebuyMinutes = Number(mStake[2]) || 0;
+          continue;
+        }
+
+        // Ligne de résultat de tournoi : 7 colonnes, Place numérique en 1ère position
+        if (current && row.length === 7 && /^\d+$/.test(row[0])){
+          const [placeStr, name, rebuyStr, gainStr] = row; // Mise/Profit/Points recalculés par l'appli
+          current.results.push({
+            playerId: getPid(name),
+            position: Number(placeStr),
+            rebuyCount: Number(rebuyStr) || 0,
+            winnings: parseEuro(gainStr),
+            winningsIsManual: true
+          });
+        }
+      }
+    }
+    if (current) tournaments.push(current);
+
+    if (!tournaments.length) throw new Error("Aucun tournoi détecté dans ce PDF.");
+
+    const players = [...playerIds.entries()].map(([name, id]) => ({ id, name }));
+    const finalTournaments = tournaments.map(t => ({
+      id: uid(),
+      date: t.date,
+      stake: t.stake,
+      rebuyMinutes: t.rebuyMinutes,
+      payoutPercents: [],
+      results: t.results
+    }));
+
+    return { players, tournaments: finalTournaments };
+  }
+
+  importPdfBtn.addEventListener("click", () => {
+    if (!requireAuth()) return;
+    importPdfFile.click();
+  });
+
+  importPdfFile.addEventListener("change", (e) => {
+    const file = e.target.files[0];
+    if (!file) return;
+    parsePdfToState(file).then(data => {
+      if (!confirm(`PDF lu : ${data.players.length} joueur(s) + ${data.tournaments.length} tournoi(s) détecté(s). Importer et écraser les données actuelles ?`)) return;
+      if (state.players.length || state.tournaments.length){
+        trashPush({ kind: "reset_snapshot", players: state.players, tournaments: state.tournaments });
+      }
+      state.players = data.players;
+      state.tournaments = data.tournaments;
+      logAction(`Import PDF : ${data.players.length} joueur(s), ${data.tournaments.length} tournoi(s) — ancien état en corbeille`);
+      draft = new Map();
+      exitEditMode();
+      save();
+      renderAll();
+      setTab("resultats");
+    }).catch(err => {
+      alert("Impossible de lire ce PDF : " + err.message);
+    }).finally(() => {
+      importPdfFile.value = "";
+    });
+  });
+
+  // ✅ PDF: Totaux + tous les tournois (ancien -> récent, donc le dernier à la fin)
+  // ✅ PDF: Totaux + tous les tournois (récent -> ancien)
+  // ✅ PDF: Totaux + tous les tournois (récent -> ancien) — FIX chevauchement
+async function exportPDFAll(){
+  if (!state.tournaments.length){
+    alert("Aucun tournoi à exporter.");
+    return;
+  }
+
+  const leaders = computeGlobalLeaderboard();
+
+  // ✅ most recent first
+  const tournamentsDesc = [...state.tournaments].sort((a,b)=> (b.date||"").localeCompare(a.date||""));
+
+  const { jsPDF } = window.jspdf;
+  const doc = new jsPDF({ unit: "pt", format: "a4" });
+
+  const marginX = 40;
+  const pageBottom = 800; // limite basse approx A4 en pt (autoTable gère aussi)
+  const ensureSpace = (need) => {
+    if (cursorY + need > pageBottom){
+      doc.addPage();
+      cursorY = 48;
+    }
+  };
+
+  let cursorY = 48;
+
+  // Header
+  doc.setFont("helvetica", "bold");
+  doc.setFontSize(14);
+  doc.text("Résultats Poker", marginX, cursorY);
+
+  doc.setFont("helvetica", "normal");
+  doc.setFontSize(10);
+  cursorY += 18;
+  doc.text(`Généré le: ${new Date().toLocaleString("fr-FR")}`, marginX, cursorY);
+
+  // Global leaderboard by points (en premier)
+  const leadersByPoints = [...leaders].sort((a,b)=> b.totalPoints - a.totalPoints);
+
+  cursorY += 18;
+  doc.setFont("helvetica", "bold");
+  doc.text("Classement général par points", marginX, cursorY);
+
+  doc.setFont("helvetica", "normal");
+  cursorY += 10;
+
+  doc.autoTable({
+    startY: cursorY + 8,
+    head: [["#", "Joueur", "Points", "Profit total", "Tournois"]],
+    body: leadersByPoints.map((x, i) => [
+      String(i+1),
+      x.name,
+      String(x.totalPoints),
+      euro(x.totalProfit),
+      String(x.tournaments),
+    ]),
+    styles: { font: "helvetica", fontSize: 9, cellPadding: 4 },
+    headStyles: { fillColor: [20, 26, 51] },
+    margin: { left: marginX, right: marginX }
+  });
+
+  // ✅ curseur après le tableau
+  cursorY = doc.lastAutoTable.finalY + 24;
+
+  // Global leaderboard by profit (en second)
+  ensureSpace(24);
+  doc.setFont("helvetica", "bold");
+  doc.setFontSize(12);
+  doc.text("Classement général par profit", marginX, cursorY);
+
+  doc.setFont("helvetica", "normal");
+  cursorY += 10;
+
+  doc.autoTable({
+    startY: cursorY + 8,
+    head: [["#", "Joueur", "Profit total", "Points", "Tournois"]],
+    body: leaders.map((x, i) => [
+      String(i+1),
+      x.name,
+      euro(x.totalProfit),
+      String(x.totalPoints),
+      String(x.tournaments),
+    ]),
+    styles: { font: "helvetica", fontSize: 9, cellPadding: 4 },
+    headStyles: { fillColor: [20, 26, 51] },
+    margin: { left: marginX, right: marginX }
+  });
+
+  cursorY = doc.lastAutoTable.finalY + 24;
+
+  // Title for tournaments section — toujours sur une nouvelle page
+  doc.addPage();
+  cursorY = 48;
+  doc.setFont("helvetica", "bold");
+  doc.setFontSize(12);
+  doc.text("Détail de tous les tournois (du plus récent au plus ancien)", marginX, cursorY);
+  cursorY += 18;
+
+  // All tournaments
+  for (const t of tournamentsDesc){
+    const { stakeValue, pot, totalPlayers, computed } = computeTournamentComputed(t);
+    const resultsSorted = computed.slice().sort((a,b)=> Number(a.position||999) - Number(b.position||999));
+
+    // place tournament header
+    ensureSpace(44);
+    doc.setFont("helvetica", "bold");
+    doc.setFontSize(11);
+    doc.text(`Tournoi: ${t.date || "Sans date"}`, marginX, cursorY);
+
+    doc.setFont("helvetica", "normal");
+    doc.setFontSize(10);
+    cursorY += 14;
+    doc.text(
+      `Stake: ${euro(stakeValue)}  •  Pot: ${euro(pot)}  •  Recave: ${Number(t.rebuyMinutes||0)} min  •  Joueurs: ${totalPlayers}`,
+      marginX,
+      cursorY
+    );
+
+    doc.autoTable({
+      startY: cursorY + 10,
+      head: [["Place", "Joueur", "Recaves", "Gain", "Mise", "Profit", "Points"]],
+      body: resultsSorted.map(r => {
+        const name = playerById(r.playerId)?.name ?? "Inconnu";
+        return [
+          String(Number(r.position||0)),
+          name,
+          String(Number(r.rebuyCount||0)),
+          euro(Number(r.winnings||0)),
+          euro(Number(r.cost||0)),
+          euro(Number(r.profit||0)),
+          String(Number(r.points||0)),
+        ];
+      }),
+      styles: { font: "helvetica", fontSize: 9, cellPadding: 4 },
+      headStyles: { fillColor: [20, 26, 51] },
+      margin: { left: marginX, right: marginX }
+    });
+
+    // ✅ curseur après le tableau du tournoi
+    cursorY = doc.lastAutoTable.finalY + 22;
+  }
+
+  const first = tournamentsDesc[0];
+  const safeDate = (first?.date || "tournois").replaceAll("/", "-");
+  doc.save(`poker-resultats-tous-tournois-${safeDate}.pdf`);
+}
+
+
+
+  function renderResultatsWiring(){
+    editTournamentBtn.onclick = () => {
+      const tid = tournamentSelect.value;
+      const t = state.tournaments.find(x => x.id === tid);
+      if (!t) return;
+      enterEditMode(t);
+    };
+
+    deleteTournamentBtn.onclick = () => {
+      if (!requireAuth()) return;
+      const tid = tournamentSelect.value;
+      const t = state.tournaments.find(x => x.id === tid);
+      if (!t) return;
+      if (!confirm(`Supprimer le tournoi du ${t.date || "Sans date"} ?`)) return;
+      trashPush({ kind: "tournament", tournament: t });
+      state.tournaments = state.tournaments.filter(x => x.id !== tid);
+      logAction(`Tournoi du ${t.date || "Sans date"} supprimé (déplacé en corbeille)`);
+      if (editingTournamentId === tid) exitEditMode();
+      save();
+      renderAll();
+    };
+  }
+
+  function renderAll(){
+    renderStatus();
+    renderPlayers();
+    renderDraft();
+
+    if (viewResultats.classList.contains("active")) {
+      renderResultats();
+      renderResultatsWiring();
+    }
+    if (viewStats.classList.contains("active")) {
+      renderActiveStatsSubView();
+    }
+  }
+
+  // Init
+  renderAll();
+})();
+</script>
+
+<script>
+  if ("serviceWorker" in navigator) {
+    window.addEventListener("load", () => {
+      navigator.serviceWorker.register("sw.js").catch((err) => {
+        console.log("Service worker non enregistré:", err);
+      });
+    });
+  }
+</script>
+</body>
+</html>
