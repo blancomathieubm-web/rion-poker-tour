@@ -3,13 +3,13 @@
 // on essaie toujours d'avoir la dernière version en ligne, et on ne
 // retombe sur la copie en cache que si le réseau échoue (vrai hors-ligne).
 
-const CACHE_NAME = "poker-tracker-shell-v2";
+const CACHE_NAME = "poker-tracker-shell-v5";
 const SHELL_FILES = [
   "./",
   "./index.html",
   "./manifest.json",
-  "./icon-192-v2.png",
-  "./icon-512-v2.png"
+  "./icon-192-v5.png",
+  "./icon-512-v5.png"
 ];
 
 self.addEventListener("install", (event) => {
