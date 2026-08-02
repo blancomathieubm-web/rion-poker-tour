@@ -630,19 +630,24 @@
         <div class="card">
           <div class="titleRow">
             <h2>Joueurs</h2>
-            <div class="hint" id="playerCount"></div>
+            <div class="row" style="gap:8px">
+              <div class="hint" id="playerCount"></div>
+              <button class="ghost" id="togglePlayersBtn" style="padding:6px 10px; font-size:12px">Masquer</button>
+            </div>
           </div>
 
-          <div class="row">
-            <input id="playerName" class="grow" placeholder="Nom du joueur" />
-            <button class="primary" id="addPlayerBtn">Ajouter</button>
+          <div id="playersCollapsible">
+            <div class="row">
+              <input id="playerName" class="grow" placeholder="Nom du joueur" />
+              <button class="primary" id="addPlayerBtn">Ajouter</button>
+            </div>
+
+            <div class="hr"></div>
+
+            <div class="pane" id="playersList"></div>
+
+            <div class="small">Tu peux supprimer un joueur seulement s’il n’a aucun tournoi enregistré.</div>
           </div>
-
-          <div class="hr"></div>
-
-          <div class="pane" id="playersList"></div>
-
-          <div class="small">Tu peux supprimer un joueur seulement s’il n’a aucun tournoi enregistré.</div>
         </div>
 
         <div class="card">
@@ -653,7 +658,7 @@
 
           <div class="row">
             <input id="tDate" type="date" />
-            <input id="stake" type="number" min="0" step="1" style="width:110px" />
+            <input id="stake" type="number" min="0" step="1" placeholder="Stake / Buy-in (€)" style="width:150px" />
             <input id="rebuyMinutes" type="number" min="0" step="5" placeholder="Recave (min)" style="width:140px" />
             <span class="tag">Mise = buy-in & recave</span>
           </div>
@@ -1032,6 +1037,8 @@
   const addPlayerBtn = $("addPlayerBtn");
   const playersList = $("playersList");
   const playerCount = $("playerCount");
+  const togglePlayersBtn = $("togglePlayersBtn");
+  const playersCollapsible = $("playersCollapsible");
 
   // Tournament form UI
   const tournamentFormTitle = $("tournamentFormTitle");
@@ -1148,6 +1155,7 @@
   stake.value = 5;
   rebuyMinutes.value = 60;
   payouts.value = "50,30,20";
+  rebuyCount.value = 0;
 
   // helpers
   const uid = () => Math.random().toString(16).slice(2) + Date.now().toString(16);
@@ -2257,6 +2265,22 @@
   }
 
   // Events
+  // ── Masquer/afficher la liste des joueurs (préférence mémorisée) ──
+  const PLAYERS_COLLAPSED_KEY = "poker_tournoi_tracker_players_collapsed";
+
+  function setPlayersCollapsed(collapsed){
+    playersCollapsible.style.display = collapsed ? "none" : "block";
+    togglePlayersBtn.textContent = collapsed ? "Afficher" : "Masquer";
+    localStorage.setItem(PLAYERS_COLLAPSED_KEY, collapsed ? "1" : "0");
+  }
+
+  togglePlayersBtn.addEventListener("click", () => {
+    const collapsed = playersCollapsible.style.display !== "none";
+    setPlayersCollapsed(collapsed);
+  });
+
+  setPlayersCollapsed(localStorage.getItem(PLAYERS_COLLAPSED_KEY) === "1");
+
   addPlayerBtn.addEventListener("click", () => {
     if (!requireAuth()) return;
     const name = (playerName.value || "").trim();
@@ -2305,8 +2329,8 @@
     draft.set(pid, { playerId: pid, rebuyCount: rc, position: pos, winnings, winningsIsManual });
 
     playerSelect.value = "";
-    rebuyCount.value = "";
-    position.value = "";
+    rebuyCount.value = "0";
+    position.value = String(draft.size + 1);
     winningsOverride.value = "";
 
     renderDraft();
