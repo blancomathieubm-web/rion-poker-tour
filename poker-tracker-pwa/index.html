@@ -185,6 +185,39 @@
     .row{display:flex;gap:10px;flex-wrap:wrap;align-items:center}
     .row .grow{flex:1 1 auto;min-width:220px}
 
+    .formSectionTitle{
+      font-size:11.5px;
+      color:var(--acc);
+      text-transform:uppercase;
+      letter-spacing:.04em;
+      font-weight:700;
+      margin:2px 0 10px 0;
+    }
+    .fieldGrid{
+      display:flex;
+      flex-wrap:wrap;
+      gap:12px;
+    }
+    .field{
+      display:flex;
+      flex-direction:column;
+      gap:5px;
+      flex:1 1 140px;
+      min-width:130px;
+    }
+    .field.grow2{flex:2 1 220px}
+    .field label{
+      font-size:11px;
+      color:var(--muted);
+      font-weight:600;
+    }
+    .field label .small{
+      font-weight:400;
+      text-transform:none;
+      letter-spacing:0;
+    }
+    .field input, .field select{width:100%}
+
     .tag{
       display:inline-flex;
       align-items:center;
@@ -525,6 +558,9 @@
         min-width:0 !important;
         flex:1 1 100%;
       }
+
+      .fieldGrid{flex-direction:column; gap:10px}
+      .field{flex:1 1 auto; min-width:0; width:100%}
       .row .tag, .row .small{flex:1 1 100%}
       .row button{flex:1 1 auto}
 
@@ -633,38 +669,62 @@
             <div class="hint" id="draftInfo"></div>
           </div>
 
-          <div class="row">
-            <input id="tDate" type="date" />
-            <input id="stake" type="number" min="0" step="1" placeholder="Stake / Buy-in (€)" style="width:150px" />
-            <input id="rebuyMinutes" type="number" min="0" step="5" placeholder="Recave (min)" style="width:140px" />
-            <span class="tag">Mise = buy-in & recave</span>
+          <div class="formSectionTitle">1. Paramètres du tournoi</div>
+          <div class="fieldGrid">
+            <div class="field">
+              <label for="tDate">Date</label>
+              <input id="tDate" type="date" />
+            </div>
+            <div class="field">
+              <label for="stake">Stake / Buy-in (€)</label>
+              <input id="stake" type="number" min="0" step="1" />
+            </div>
+            <div class="field">
+              <label for="rebuyMinutes">Durée des recaves (min)</label>
+              <input id="rebuyMinutes" type="number" min="0" step="5" />
+            </div>
           </div>
-
-          <div class="row">
-            <input id="payouts" class="grow" placeholder="Payouts % ex: 50,30,20 (optionnel)" />
-            <span class="small">Si vide: gains à saisir à la main.</span>
+          <div class="field" style="margin-top:10px">
+            <label for="payouts">Payouts % <span class="small">(optionnel — ex: 50,30,20. Laisse vide pour saisir les gains à la main)</span></label>
+            <input id="payouts" placeholder="ex: 50,30,20" />
           </div>
 
           <div class="hr"></div>
 
-          <div class="row">
-            <select id="playerSelect" class="grow"></select>
-            <input id="rebuyCount" type="number" min="0" step="1" placeholder="Recaves (nb)" style="width:140px" />
-            <input id="position" type="number" min="1" step="1" placeholder="Place (1..)" style="width:130px" />
-            <input id="winningsOverride" type="number" min="0" step="1" placeholder="Gain € (optionnel)" style="width:170px" />
-            <button class="primary" id="addResultBtn">Ajouter</button>
+          <div class="formSectionTitle">2. Ajouter un résultat joueur</div>
+          <div class="fieldGrid">
+            <div class="field grow2">
+              <label for="playerSelect">Joueur</label>
+              <select id="playerSelect"></select>
+            </div>
+            <div class="field">
+              <label for="rebuyCount">Nombre de recaves</label>
+              <input id="rebuyCount" type="number" min="0" step="1" />
+            </div>
+            <div class="field">
+              <label for="position">Place finale</label>
+              <input id="position" type="number" min="1" step="1" placeholder="1, 2, 3..." />
+            </div>
+            <div class="field">
+              <label for="winningsOverride">Gain € <span class="small">(optionnel)</span></label>
+              <input id="winningsOverride" type="number" min="0" step="1" />
+            </div>
+          </div>
+          <div class="row" style="margin-top:10px">
+            <button class="primary" id="addResultBtn">➕ Ajouter ce joueur au tournoi</button>
             <button id="clearDraftBtn">Vider</button>
           </div>
 
           <div class="hr"></div>
 
+          <div class="formSectionTitle">3. Résultats du tournoi (avant enregistrement)</div>
           <div class="pane" id="draftTable"></div>
 
-          <div class="row" style="justify-content:space-between; gap:10px">
+          <div class="row" style="justify-content:space-between; gap:10px; margin-top:6px">
             <div class="small" id="potInfo"></div>
             <div class="row">
               <button class="ghost" id="cancelEditBtn" style="display:none">Annuler modification</button>
-              <button class="primary" id="saveTournamentBtn">Enregistrer le tournoi</button>
+              <button class="primary" id="saveTournamentBtn">✅ Enregistrer le tournoi</button>
             </div>
           </div>
 
