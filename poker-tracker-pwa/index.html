@@ -712,7 +712,7 @@
 
           <div class="row">
             <select id="tournamentSelect" class="grow"></select>
-            <button class="primary" id="pdfBtn">Télécharger PDF</button>
+            <button class="primary" id="pdfBtn">📤 Partager / Télécharger PDF</button>
           </div>
 
           <div class="row">
@@ -914,7 +914,7 @@
       <h3>5. Résultats / PDF</h3>
       <ul>
         <li>L'onglet <b>Résultats / PDF</b> affiche le classement global (trié par profit) et le détail d'un tournoi au choix.</li>
-        <li><b>Télécharger PDF</b> exporte tout : classement par points, classement par profit, puis chaque tournoi en détail (du plus récent au plus ancien).</li>
+        <li><b>📤 Partager / Télécharger PDF</b> exporte tout : classement par points, classement par profit, puis chaque tournoi en détail (du plus récent au plus ancien). Sur téléphone, ça ouvre directement le menu de partage (WhatsApp, Messages...) pour l'envoyer à ton groupe. Sur ordinateur, il se télécharge simplement.</li>
         <li><b>Modifier / Supprimer un tournoi</b> : sélectionne-le dans la liste déroulante avant de cliquer.</li>
       </ul>
 
@@ -3047,7 +3047,28 @@ async function exportPDFAll(){
 
   const first = tournamentsDesc[0];
   const safeDate = (first?.date || "tournois").replaceAll("/", "-");
-  doc.save(`poker-resultats-tous-tournois-${safeDate}.pdf`);
+  const fileName = `poker-resultats-tous-tournois-${safeDate}.pdf`;
+
+  // Sur mobile (iPhone/Android) : ouvre le menu de partage natif (WhatsApp, Messages, Mail...)
+  // Sur ordi, la plupart des navigateurs ne savent pas partager de fichier : on retombe sur le téléchargement classique.
+  try {
+    const pdfBlob = doc.output("blob");
+    const file = new File([pdfBlob], fileName, { type: "application/pdf" });
+    if (navigator.canShare && navigator.canShare({ files: [file] })){
+      await navigator.share({
+        files: [file],
+        title: "Résultats Poker",
+        text: "Résultats du Rion Poker Tour"
+      });
+      return;
+    }
+  } catch (err){
+    // L'utilisateur a annulé le partage, ou le navigateur a refusé : pas grave, on ignore.
+    if (err && err.name === "AbortError") return;
+    console.warn("Partage impossible, téléchargement classique à la place:", err);
+  }
+
+  doc.save(fileName);
 }
 
 
