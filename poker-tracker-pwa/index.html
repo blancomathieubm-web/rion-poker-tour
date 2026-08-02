@@ -320,6 +320,17 @@
     .trashActions button{padding:6px 9px; font-size:11.5px}
     .historyList{max-height:50vh; overflow-y:auto}
 
+    .buyinCard{
+      background:rgba(0,0,0,.18);
+      border:1px solid rgba(255,255,255,.08);
+      border-radius:14px;
+      padding:16px;
+      margin-bottom:8px;
+    }
+    .buyinCard .lbl{font-size:12px; color:var(--muted); margin-bottom:2px}
+    .buyinCard .val{font-size:26px; font-weight:800; color:var(--acc)}
+    .buyinCard .sub2{font-size:12.5px; color:var(--muted); margin-top:4px}
+
     .toastContainer{
       position:fixed;
       top:16px;
@@ -517,6 +528,7 @@
         <button class="navItem ghost small" id="importPdfBtn">📄 Import PDF</button>
         <input type="file" id="importPdfFile" accept="application/pdf" style="display:none" />
         <button class="navItem ghost small" id="historyBtn">🕒 Historique</button>
+        <button class="navItem ghost small" id="buyinBtn">🎟️ Buy-in</button>
         <button class="navItem danger small" id="resetAllBtn">🗑️ Reset total</button>
       </div>
 
@@ -756,6 +768,38 @@
     </nav>
   </div>
 
+  <!-- MODALE BUY-IN -->
+  <div class="modalOverlay" id="buyinModal">
+    <div class="modalBox" style="max-width:420px">
+      <div class="modalHeader">
+        <h2>🎟️ Buy-in</h2>
+        <button class="ghost modalClose" id="buyinCloseBtn">Fermer</button>
+      </div>
+      <p class="small">Pense-bête pour la répartition des jetons avant de démarrer une partie.</p>
+
+      <div id="buyinDisplay"></div>
+
+      <div id="buyinEditForm" style="display:none">
+        <div class="hr"></div>
+        <div class="row" style="flex-direction:column; align-items:stretch; gap:8px">
+          <label class="small">Buy-in (€)</label>
+          <input id="buyinAmountInput" type="number" min="0" step="0.5" />
+          <label class="small">Jetons distribués au buy-in</label>
+          <input id="buyinChipsInput" type="number" min="0" step="1" />
+          <label class="small">Recave (€)</label>
+          <input id="rebuyAmountInput" type="number" min="0" step="0.5" />
+          <label class="small">Jetons distribués à la recave</label>
+          <input id="rebuyChipsInput" type="number" min="0" step="1" />
+        </div>
+      </div>
+
+      <div class="row" style="margin-top:12px">
+        <button class="ghost" id="buyinEditBtn">✏️ Modifier</button>
+        <button class="primary" id="buyinSaveBtn" style="display:none">Enregistrer</button>
+      </div>
+    </div>
+  </div>
+
   <!-- MODALE HISTORIQUE -->
   <div class="modalOverlay" id="historyModal">
     <div class="modalBox" style="max-width:560px">
@@ -855,7 +899,10 @@
         <li><b>Comparaison</b> : choisis deux joueurs pour comparer leurs stats côte à côte (tableau) et superposer leur courbe de profit cumulé sur la même échelle de temps. La meilleure valeur de chaque ligne est surlignée en vert.</li>
       </ul>
 
-      <h3>7. Sauvegarder / restaurer les données</h3>
+      <h3>7. Buy-in</h3>
+      <p>Un pense-bête accessible depuis la sidebar (🎟️ Buy-in), indépendant des tournois : combien de jetons distribuer pour le buy-in et pour une recave. Pratique à consulter juste avant de démarrer une partie. Modifiable via "✏️ Modifier" (connexion requise).</p>
+
+      <h3>8. Sauvegarder / restaurer les données</h3>
       <ul>
         <li>Toutes les données sont stockées <b>localement dans ton navigateur</b> (elles ne sont pas partagées automatiquement entre appareils ou personnes).</li>
         <li><b>Export JSON</b> : télécharge une sauvegarde complète.</li>
@@ -863,7 +910,7 @@
         <li><b>Import PDF</b> : reconstruit automatiquement joueurs + tournois à partir d'un PDF exporté par cette appli — pratique si tu as perdu tes données mais gardé un PDF.</li>
       </ul>
 
-      <h3>8. Reset total</h3>
+      <h3>9. Reset total</h3>
       <p>Supprime définitivement tous les joueurs et tournois. Pense à exporter un JSON ou PDF avant si tu veux garder une trace.</p>
     </div>
   </div>
@@ -1002,8 +1049,20 @@
   const logContent = $("logContent");
   const toastContainer = $("toastContainer");
 
+  const buyinBtn = $("buyinBtn");
+  const buyinModal = $("buyinModal");
+  const buyinCloseBtn = $("buyinCloseBtn");
+  const buyinDisplay = $("buyinDisplay");
+  const buyinEditForm = $("buyinEditForm");
+  const buyinEditBtn = $("buyinEditBtn");
+  const buyinSaveBtn = $("buyinSaveBtn");
+  const buyinAmountInput = $("buyinAmountInput");
+  const buyinChipsInput = $("buyinChipsInput");
+  const rebuyAmountInput = $("rebuyAmountInput");
+  const rebuyChipsInput = $("rebuyChipsInput");
+
   /** state */
-  const state = { players: [], tournaments: [], trash: [], log: [] };
+  const state = { players: [], tournaments: [], trash: [], log: [], buyinConfig: { buyin: 5, chips: 5000, rebuy: 5, rebuyChips: 5000 } };
   const NAME_KEY = "poker_tournoi_tracker_display_name";
 
   // Draft
@@ -1109,12 +1168,23 @@
     state.tournaments = Array.isArray(cached.tournaments) ? cached.tournaments : [];
     state.trash = Array.isArray(cached.trash) ? cached.trash : [];
     state.log = Array.isArray(cached.log) ? cached.log : [];
+    if (cached.buyinConfig) state.buyinConfig = cached.buyinConfig;
+  }
+
+  function currentSaveData(){
+    return {
+      players: state.players,
+      tournaments: state.tournaments,
+      trash: state.trash || [],
+      log: state.log || [],
+      buyinConfig: state.buyinConfig || { buyin: 5, chips: 5000, rebuy: 5, rebuyChips: 5000 }
+    };
   }
 
   // Sauvegarde vers Firestore (partagée entre tous les appareils connectés)
   function save(){
     setSyncStatus("🟡 Sauvegarde...", "pending");
-    setDoc(stateDocRef, { players: state.players, tournaments: state.tournaments, trash: state.trash || [], log: state.log || [] })
+    setDoc(stateDocRef, currentSaveData())
       .then(() => {
         saveCache();
         setSyncStatus("🟢 Synchronisé", "ok");
@@ -1135,9 +1205,10 @@
         state.tournaments = Array.isArray(data.tournaments) ? data.tournaments : [];
         state.trash = Array.isArray(data.trash) ? data.trash : [];
         state.log = Array.isArray(data.log) ? data.log : [];
+        state.buyinConfig = data.buyinConfig || { buyin: 5, chips: 5000, rebuy: 5, rebuyChips: 5000 };
       } else {
         // Premier lancement : le document n'existe pas encore, on le crée
-        setDoc(stateDocRef, { players: state.players, tournaments: state.tournaments, trash: state.trash || [], log: state.log || [] });
+        setDoc(stateDocRef, currentSaveData());
       }
       saveCache();
       setSyncStatus("🟢 Synchronisé", "ok");
@@ -1157,6 +1228,9 @@
       renderAll();
       if (historyModal.classList.contains("open")){
         if (historySubTrash.classList.contains("primary")) renderTrash(); else renderLog();
+      }
+      if (buyinModal.classList.contains("open") && buyinEditForm.style.display === "none"){
+        renderBuyinDisplay();
       }
     },
     (err) => {
@@ -2304,6 +2378,74 @@
     if (e.key === "Enter") loginSubmitBtn.click();
   });
 
+  // ── Buy-in : page de rappel ──────────────────────────────────
+  function getBuyinConfig(){
+    return state.buyinConfig || { buyin: 5, chips: 5000, rebuy: 5, rebuyChips: 5000 };
+  }
+
+  function renderBuyinDisplay(){
+    const c = getBuyinConfig();
+    buyinDisplay.innerHTML = `
+      <div class="buyinCard">
+        <div class="lbl">Buy-in</div>
+        <div class="val">${euro(Number(c.buyin || 0))} → ${Number(c.chips || 0).toLocaleString("fr-FR")} jetons</div>
+        <div class="sub2">Chaque joueur reçoit ce montant de jetons à l'entrée.</div>
+      </div>
+      <div class="buyinCard">
+        <div class="lbl">Recave</div>
+        <div class="val">${euro(Number(c.rebuy || 0))} → ${Number(c.rebuyChips || 0).toLocaleString("fr-FR")} jetons</div>
+        <div class="sub2">Montant de jetons remis à chaque recave.</div>
+      </div>
+    `;
+  }
+
+  function openBuyinEditForm(){
+    const c = getBuyinConfig();
+    buyinAmountInput.value = c.buyin;
+    buyinChipsInput.value = c.chips;
+    rebuyAmountInput.value = c.rebuy;
+    rebuyChipsInput.value = c.rebuyChips;
+    buyinDisplay.style.display = "none";
+    buyinEditForm.style.display = "block";
+    buyinEditBtn.style.display = "none";
+    buyinSaveBtn.style.display = "inline-flex";
+  }
+
+  function closeBuyinEditForm(){
+    buyinDisplay.style.display = "block";
+    buyinEditForm.style.display = "none";
+    buyinEditBtn.style.display = "inline-flex";
+    buyinSaveBtn.style.display = "none";
+  }
+
+  buyinBtn.addEventListener("click", () => {
+    closeBuyinEditForm();
+    renderBuyinDisplay();
+    buyinModal.classList.add("open");
+  });
+  buyinCloseBtn.addEventListener("click", () => { closeBuyinEditForm(); buyinModal.classList.remove("open"); });
+  buyinModal.addEventListener("click", (e) => { if (e.target === buyinModal) { closeBuyinEditForm(); buyinModal.classList.remove("open"); } });
+
+  buyinEditBtn.addEventListener("click", () => {
+    if (!requireAuth()) return;
+    openBuyinEditForm();
+  });
+
+  buyinSaveBtn.addEventListener("click", () => {
+    if (!requireAuth()) return;
+    const newConfig = {
+      buyin: Number(buyinAmountInput.value || 0),
+      chips: Number(buyinChipsInput.value || 0),
+      rebuy: Number(rebuyAmountInput.value || 0),
+      rebuyChips: Number(rebuyChipsInput.value || 0)
+    };
+    state.buyinConfig = newConfig;
+    logAction(`Config buy-in mise à jour : ${euro(newConfig.buyin)} → ${newConfig.chips} jetons`);
+    save();
+    closeBuyinEditForm();
+    renderBuyinDisplay();
+  });
+
   // ── Historique : Corbeille + Journal ────────────────────────
   function trashDescription(item){
     if (item.kind === "tournament"){
@@ -2421,7 +2563,7 @@
   helpBtn.addEventListener("click", () => helpModal.classList.add("open"));
   helpCloseBtn.addEventListener("click", () => helpModal.classList.remove("open"));
   helpModal.addEventListener("click", (e) => { if (e.target === helpModal) helpModal.classList.remove("open"); });
-  document.addEventListener("keydown", (e) => { if (e.key === "Escape") { helpModal.classList.remove("open"); closeLoginModal(); historyModal.classList.remove("open"); } });
+  document.addEventListener("keydown", (e) => { if (e.key === "Escape") { helpModal.classList.remove("open"); closeLoginModal(); historyModal.classList.remove("open"); buyinModal.classList.remove("open"); } });
 
   // ── Export / Import JSON ────────────────────────────────────
   exportBtn.addEventListener("click", () => {
