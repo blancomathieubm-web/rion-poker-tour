@@ -738,18 +738,18 @@
             <h2>Joueurs</h2>
             <div class="row" style="gap:8px">
               <div class="hint" id="playerCount"></div>
-              <button class="ghost" id="togglePlayersBtn" style="padding:6px 10px; font-size:12px">Masquer</button>
+              <button class="ghost" id="togglePlayersBtn" style="padding:6px 10px; font-size:12px">Masquer la liste</button>
             </div>
           </div>
 
+          <div class="row">
+            <input id="playerName" class="grow" placeholder="Nom du joueur" />
+            <button class="primary" id="addPlayerBtn">Ajouter</button>
+          </div>
+
+          <div class="hr"></div>
+
           <div id="playersCollapsible">
-            <div class="row">
-              <input id="playerName" class="grow" placeholder="Nom du joueur" />
-              <button class="primary" id="addPlayerBtn">Ajouter</button>
-            </div>
-
-            <div class="hr"></div>
-
             <div class="pane" id="playersList"></div>
 
             <div class="small">Tu peux supprimer un joueur seulement s’il n’a aucun tournoi enregistré.</div>
@@ -2330,7 +2330,7 @@
 
   function setPlayersCollapsed(collapsed){
     playersCollapsible.style.display = collapsed ? "none" : "block";
-    togglePlayersBtn.textContent = collapsed ? "Afficher" : "Masquer";
+    togglePlayersBtn.textContent = collapsed ? "Afficher la liste" : "Masquer la liste";
     localStorage.setItem(PLAYERS_COLLAPSED_KEY, collapsed ? "1" : "0");
   }
 
