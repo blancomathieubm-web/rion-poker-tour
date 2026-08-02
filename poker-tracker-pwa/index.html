@@ -417,7 +417,7 @@
 
     .dashboard{
       display:grid;
-      grid-template-columns:repeat(3, 1fr);
+      grid-template-columns:repeat(auto-fit, minmax(200px, 1fr));
       gap:16px;
     }
     .dashCard{
@@ -615,6 +615,11 @@
           <div class="dashIcon">📊</div>
           <div class="dashTitle">Stats</div>
           <div class="dashSub">Par joueur, vue d'ensemble, comparaison</div>
+        </div>
+        <div class="dashCard" id="dashBuyin">
+          <div class="dashIcon">🎟️</div>
+          <div class="dashTitle">Buy-in</div>
+          <div class="dashSub">Répartition des jetons avant de démarrer</div>
         </div>
       </div>
     </div>
@@ -1002,6 +1007,7 @@
   const dashNouveau = $("dashNouveau");
   const dashClassement = $("dashClassement");
   const dashStats = $("dashStats");
+  const dashBuyin = $("dashBuyin");
   const statsPlayerSelect = $("statsPlayerSelect");
   const statsHint = $("statsHint");
   const statsSummary = $("statsSummary");
@@ -1412,6 +1418,7 @@
   dashNouveau.addEventListener("click", () => setTab("saisie"));
   dashClassement.addEventListener("click", () => setTab("resultats"));
   dashStats.addEventListener("click", () => setTab("stats"));
+  dashBuyin.addEventListener("click", () => buyinBtn.click());
 
   function setStatsSubTab(which){
     const joueur = which === "joueur";
