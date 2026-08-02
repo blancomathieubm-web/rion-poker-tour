@@ -765,8 +765,8 @@
           <div class="titleRow">
             <h2>Classement global</h2>
             <div class="row" style="gap:6px">
-              <button class="primary" id="globalSortProfit" style="padding:6px 10px; font-size:11.5px">💰 Profit</button>
-              <button class="ghost" id="globalSortPoints" style="padding:6px 10px; font-size:11.5px">🏅 Points</button>
+              <button class="ghost" id="globalSortProfit" style="padding:6px 10px; font-size:11.5px">💰 Profit</button>
+              <button class="primary" id="globalSortPoints" style="padding:6px 10px; font-size:11.5px">🏅 Points</button>
             </div>
           </div>
           <div class="hint" id="globalInfo"></div>
@@ -2169,7 +2169,7 @@
   }
 
 
-  let globalSortMode = "profit";
+  let globalSortMode = "points";
 
   function renderGlobalLeaderboard(){
     const leaders = computeGlobalLeaderboard();
