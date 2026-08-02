@@ -324,24 +324,46 @@
     .chipRow{
       display:flex;
       align-items:center;
-      gap:10px;
+      gap:12px;
       background:rgba(0,0,0,.18);
       border:1px solid rgba(255,255,255,.08);
       border-radius:10px;
       padding:8px 10px;
-    }
-    .chipDot{
-      width:22px; height:22px;
-      border-radius:50%;
-      border:2px solid rgba(255,255,255,.35);
-      flex-shrink:0;
-      box-shadow:inset 0 0 0 2px rgba(0,0,0,.25);
     }
     .chipLabel{flex:1; font-size:13px}
     .chipLabel .chipValue{color:var(--muted); font-size:11.5px}
     .chipCount{font-weight:700; font-variant-numeric:tabular-nums}
     .chipTotal{font-size:12.5px; color:var(--muted); margin:4px 0 2px 0}
     .chipTotal b{color:var(--text)}
+
+    .pokerChip{
+      position:relative;
+      width:38px; height:38px;
+      border-radius:50%;
+      flex-shrink:0;
+      box-shadow:0 2px 5px rgba(0,0,0,.45), inset 0 0 0 1px rgba(0,0,0,.25);
+    }
+    .pokerChip::before{
+      content:"";
+      position:absolute;
+      inset:0;
+      border-radius:50%;
+      background:repeating-conic-gradient(rgba(255,255,255,.65) 0deg 14deg, rgba(0,0,0,.35) 14deg 28deg);
+      -webkit-mask:radial-gradient(circle, transparent 60%, black 61%, black 100%);
+      mask:radial-gradient(circle, transparent 60%, black 61%, black 100%);
+    }
+    .pokerChip .chipInner{
+      position:absolute;
+      inset:16%;
+      border-radius:50%;
+      border:2px dashed rgba(255,255,255,.55);
+      display:flex;
+      align-items:center;
+      justify-content:center;
+      font-size:9.5px;
+      font-weight:800;
+      text-shadow:0 1px 2px rgba(0,0,0,.5);
+    }
 
     .chipEditRow{
       display:flex;
@@ -351,7 +373,6 @@
     }
     .chipEditRow select{flex:0 0 110px; padding:8px}
     .chipEditRow input{flex:1 1 0; min-width:0; padding:8px; text-align:center}
-    .chipEditRow .chipDot{cursor:default}
     .chipEditRow button{flex:0 0 auto; padding:8px 10px}
 
     .toastContainer{
@@ -805,25 +826,10 @@
       <div id="buyinEditRows" style="display:none"></div>
       <button class="ghost" id="buyinAddChipBtn" style="display:none; margin-top:6px">+ Ajouter une couleur</button>
 
-      <div class="hr"></div>
-
-      <h3 style="margin:6px 0 6px 0; font-size:13px; color:var(--acc)">Recave (<span id="rebuyAmountLabel"></span>)</h3>
-      <div id="rebuyDisplay"></div>
-      <div id="rebuyEditRows" style="display:none"></div>
-      <button class="ghost" id="rebuyAddChipBtn" style="display:none; margin-top:6px">+ Ajouter une couleur</button>
-
       <div id="buyinAmountsEdit" style="display:none">
         <div class="hr"></div>
-        <div class="row">
-          <div style="flex:1 1 auto">
-            <label class="small">Montant buy-in (€)</label>
-            <input id="buyinAmountInput" type="number" min="0" step="0.5" style="width:100%" />
-          </div>
-          <div style="flex:1 1 auto">
-            <label class="small">Montant recave (€)</label>
-            <input id="rebuyAmountInput" type="number" min="0" step="0.5" style="width:100%" />
-          </div>
-        </div>
+        <label class="small">Montant buy-in (€)</label>
+        <input id="buyinAmountInput" type="number" min="0" step="0.5" style="width:100%" />
       </div>
 
       <div class="row" style="margin-top:12px">
@@ -1087,45 +1093,39 @@
   const buyinModal = $("buyinModal");
   const buyinCloseBtn = $("buyinCloseBtn");
   const buyinDisplay = $("buyinDisplay");
-  const rebuyDisplay = $("rebuyDisplay");
   const buyinEditRows = $("buyinEditRows");
-  const rebuyEditRows = $("rebuyEditRows");
   const buyinAddChipBtn = $("buyinAddChipBtn");
-  const rebuyAddChipBtn = $("rebuyAddChipBtn");
   const buyinAmountsEdit = $("buyinAmountsEdit");
   const buyinAmountLabel = $("buyinAmountLabel");
-  const rebuyAmountLabel = $("rebuyAmountLabel");
   const buyinEditBtn = $("buyinEditBtn");
   const buyinSaveBtn = $("buyinSaveBtn");
   const buyinCancelBtn = $("buyinCancelBtn");
   const buyinAmountInput = $("buyinAmountInput");
-  const rebuyAmountInput = $("rebuyAmountInput");
 
   /** state */
   const CHIP_PALETTE = [
-    { label: "Blanc",  hex: "#f5f5f5" },
-    { label: "Rouge",  hex: "#ef4444" },
-    { label: "Bleu",   hex: "#3b82f6" },
-    { label: "Vert",   hex: "#22c55e" },
-    { label: "Noir",   hex: "#27272a" },
-    { label: "Jaune",  hex: "#eab308" },
-    { label: "Violet", hex: "#a855f7" },
-    { label: "Orange", hex: "#f97316" }
+    { label: "Blanc",  hex: "#f5f5f5", text: "#1a1a1a" },
+    { label: "Rouge",  hex: "#dc2626", text: "#ffffff" },
+    { label: "Bleu",   hex: "#2563eb", text: "#ffffff" },
+    { label: "Vert",   hex: "#16a34a", text: "#ffffff" },
+    { label: "Noir",   hex: "#18181b", text: "#ffffff" },
+    { label: "Jaune",  hex: "#eab308", text: "#1a1a1a" },
+    { label: "Violet", hex: "#9333ea", text: "#ffffff" },
+    { label: "Orange", hex: "#ea580c", text: "#ffffff" }
   ];
+
+  function chipTextColor(hex){
+    const p = CHIP_PALETTE.find(c => c.hex === hex);
+    return p ? p.text : "#ffffff";
+  }
 
   function defaultBuyinConfig(){
     return {
       buyin: 5,
       buyinChips: [
         { label: "Blanc", hex: "#f5f5f5", value: 25, count: 20 },
-        { label: "Rouge", hex: "#ef4444", value: 100, count: 15 },
-        { label: "Bleu",  hex: "#3b82f6", value: 500, count: 6 }
-      ],
-      rebuy: 5,
-      rebuyChips: [
-        { label: "Blanc", hex: "#f5f5f5", value: 25, count: 20 },
-        { label: "Rouge", hex: "#ef4444", value: 100, count: 15 },
-        { label: "Bleu",  hex: "#3b82f6", value: 500, count: 6 }
+        { label: "Rouge", hex: "#dc2626", value: 100, count: 15 },
+        { label: "Bleu",  hex: "#2563eb", value: 500, count: 6 }
       ]
     };
   }
@@ -2447,7 +2447,7 @@
   });
 
   // ── Buy-in : page de rappel (répartition par couleur de jeton) ──
-  let buyinDraft = null; // { buyin, buyinChips: [...], rebuy, rebuyChips: [...] } pendant l'édition
+  let buyinDraft = null; // { buyin, buyinChips: [...] } pendant l édition
 
   function getBuyinConfig(){
     return state.buyinConfig || defaultBuyinConfig();
@@ -2460,6 +2460,15 @@
     return { totalCount, totalValue };
   }
 
+  function pokerChipHtml(c){
+    const textColor = chipTextColor(c.hex);
+    return `
+      <div class="pokerChip" style="background:${c.hex}">
+        <div class="chipInner" style="border-color:${textColor === '#ffffff' ? 'rgba(255,255,255,.55)' : 'rgba(0,0,0,.35)'}; color:${textColor}">${c.value}</div>
+      </div>
+    `;
+  }
+
   function renderChipListReadonly(chips){
     const list = Array.isArray(chips) ? chips : [];
     if (!list.length) return `<div class="empty">Aucun jeton configuré. Clique sur "✏️ Modifier" pour en ajouter.</div>`;
@@ -2468,7 +2477,7 @@
       <div class="chipList">
         ${list.map(c => `
           <div class="chipRow">
-            <span class="chipDot" style="background:${c.hex}"></span>
+            ${pokerChipHtml(c)}
             <span class="chipLabel">${escapeHtml(c.label)} <span class="chipValue">(valeur ${c.value})</span></span>
             <span class="chipCount">× ${c.count}</span>
           </div>
@@ -2481,9 +2490,7 @@
   function renderBuyinDisplay(){
     const c = getBuyinConfig();
     buyinAmountLabel.textContent = euro(Number(c.buyin || 0));
-    rebuyAmountLabel.textContent = euro(Number(c.rebuy || 0));
     buyinDisplay.innerHTML = renderChipListReadonly(c.buyinChips);
-    rebuyDisplay.innerHTML = renderChipListReadonly(c.rebuyChips);
   }
 
   function chipColorOptions(selectedHex){
@@ -2498,7 +2505,7 @@
     container.innerHTML = `
       ${list.map((c, i) => `
         <div class="chipEditRow" data-key="${key}" data-idx="${i}">
-          <span class="chipDot" style="background:${c.hex}"></span>
+          ${pokerChipHtml(c)}
           <select data-field="color">${chipColorOptions(c.hex)}</select>
           <input type="number" min="0" step="1" data-field="value" placeholder="Valeur" value="${c.value}" />
           <input type="number" min="0" step="1" data-field="count" placeholder="Nombre" value="${c.count}" />
@@ -2544,23 +2551,16 @@
     const c = getBuyinConfig();
     buyinDraft = {
       buyin: Number(c.buyin || 0),
-      buyinChips: (c.buyinChips || []).map(x => ({ ...x })),
-      rebuy: Number(c.rebuy || 0),
-      rebuyChips: (c.rebuyChips || []).map(x => ({ ...x }))
+      buyinChips: (c.buyinChips || []).map(x => ({ ...x }))
     };
 
     buyinAmountInput.value = buyinDraft.buyin;
-    rebuyAmountInput.value = buyinDraft.rebuy;
 
     renderChipEditRows(buyinEditRows, buyinDraft.buyinChips, "buyinChips");
-    renderChipEditRows(rebuyEditRows, buyinDraft.rebuyChips, "rebuyChips");
 
     buyinDisplay.style.display = "none";
-    rebuyDisplay.style.display = "none";
     buyinEditRows.style.display = "block";
-    rebuyEditRows.style.display = "block";
     buyinAddChipBtn.style.display = "inline-flex";
-    rebuyAddChipBtn.style.display = "inline-flex";
     buyinAmountsEdit.style.display = "block";
     buyinEditBtn.style.display = "none";
     buyinSaveBtn.style.display = "inline-flex";
@@ -2570,11 +2570,8 @@
   function closeBuyinEditForm(){
     buyinDraft = null;
     buyinDisplay.style.display = "block";
-    rebuyDisplay.style.display = "block";
     buyinEditRows.style.display = "none";
-    rebuyEditRows.style.display = "none";
     buyinAddChipBtn.style.display = "none";
-    rebuyAddChipBtn.style.display = "none";
     buyinAmountsEdit.style.display = "none";
     buyinEditBtn.style.display = "inline-flex";
     buyinSaveBtn.style.display = "none";
@@ -2600,15 +2597,12 @@
   });
 
   buyinAddChipBtn.addEventListener("click", () => addChipRow("buyinChips", buyinEditRows));
-  rebuyAddChipBtn.addEventListener("click", () => addChipRow("rebuyChips", rebuyEditRows));
 
   buyinSaveBtn.addEventListener("click", () => {
     if (!requireAuth()) return;
     const newConfig = {
       buyin: Number(buyinAmountInput.value || 0),
-      buyinChips: buyinDraft.buyinChips,
-      rebuy: Number(rebuyAmountInput.value || 0),
-      rebuyChips: buyinDraft.rebuyChips
+      buyinChips: buyinDraft.buyinChips
     };
     state.buyinConfig = newConfig;
     const { totalCount: bCount } = chipTotals(newConfig.buyinChips);
@@ -2617,6 +2611,7 @@
     closeBuyinEditForm();
     renderBuyinDisplay();
   });
+
 
   // ── Historique : Corbeille + Journal ────────────────────────
   function trashDescription(item){
